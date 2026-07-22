@@ -1,8 +1,8 @@
-# Anvil
+# JDot Utilities
 
 **Local file conversion. No cloud, no account, no upload.**
 
-Anvil is a desktop file converter that runs entirely on your machine. Unlike
+JDot Utilities is a desktop file converter that runs entirely on your machine. Unlike
 server-based converters, nothing is uploaded and no network is required — your
 files never leave your computer. It's built around a **tool registry**, so
 adding a new converter is a single file.
@@ -15,8 +15,8 @@ adding a new converter is a single file.
 ## Quick start (development)
 
 ```bash
-git clone https://github.com/<you>/anvil.git
-cd anvil
+git clone https://github.com/<you>/jdot-utilities.git
+cd jdot-utilities
 npm install
 npm run dev
 ```
@@ -73,7 +73,7 @@ src/
 
 **Requirements:** Image, Document, PDF, and Merge are self-contained (`sharp`
 ships prebuilt binaries, so they stay offline). The **Office** converter uses an
-installed **LibreOffice** — Anvil auto-detects it, or you can set the path in
+installed **LibreOffice** — JDot Utilities auto-detects it, or you can set the path in
 Settings. Build the `.exe` **on Windows** so the correct `sharp` binary is
 fetched automatically.
 
@@ -120,7 +120,7 @@ no network dependency at runtime.
 
 ## Design notes
 
-Anvil is styled as a precise instrument rather than a web page: a graphite
+JDot Utilities is styled as a precise instrument rather than a web page: a graphite
 "workbench" with a single anodized-cyan accent, monospaced format chips and file
 sizes, and a job queue that reads like a machine work order (input → output with
 a status LED per file).

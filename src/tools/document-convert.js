@@ -48,7 +48,7 @@ function htmlToText(html) {
 // electron so this module still loads under plain Node for the non-PDF paths.
 async function htmlToPdf(fullHtml, outputPath, pageSize) {
   const { BrowserWindow } = require("electron");
-  const tmp = path.join(os.tmpdir(), `anvil-${crypto.randomUUID()}.html`);
+  const tmp = path.join(os.tmpdir(), `jdot-${crypto.randomUUID()}.html`);
   await fs.promises.writeFile(tmp, fullHtml, "utf8");
   const win = new BrowserWindow({ show: false, webPreferences: { offscreen: true } });
   try {

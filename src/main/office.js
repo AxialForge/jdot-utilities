@@ -1,4 +1,4 @@
-// LibreOffice sidecar. Anvil doesn't bundle LibreOffice (it's ~400 MB); instead
+// LibreOffice sidecar. JDot Utilities doesn't bundle LibreOffice (it's ~400 MB); instead
 // it uses an installed copy. Each conversion runs headless with a unique user
 // profile so batches can run several at once without clobbering each other.
 // Still fully offline — LibreOffice makes no network calls here.
@@ -30,8 +30,8 @@ async function convertOffice({ inputPath, outputPath, targetExt, sofficePath, on
   if (!sofficePath) {
     throw new Error("LibreOffice not found. Install it, or set its path in Settings.");
   }
-  const outDir = fs.mkdtempSync(path.join(os.tmpdir(), "anvil-lo-"));
-  const profile = "file://" + fs.mkdtempSync(path.join(os.tmpdir(), "anvil-loprof-"));
+  const outDir = fs.mkdtempSync(path.join(os.tmpdir(), "jdot-lo-"));
+  const profile = "file://" + fs.mkdtempSync(path.join(os.tmpdir(), "jdot-loprof-"));
   onProgress?.(0.2);
 
   await new Promise((resolve, reject) => {

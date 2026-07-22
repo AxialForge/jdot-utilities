@@ -1,7 +1,7 @@
 {
-  "name": "anvil",
+  "name": "jdot-utilities",
   "version": "0.3.0",
-  "description": "Local, offline file conversion. No cloud, no account, no upload.",
+  "description": "Local, offline file utilities — conversion, PDF tools, and more. No cloud, no account, no upload.",
   "main": "src/main/main.js",
   "author": "Joe",
   "license": "MIT",

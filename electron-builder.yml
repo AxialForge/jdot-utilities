@@ -1,5 +1,5 @@
-appId: com.anvil.converter
-productName: Anvil
+appId: com.jdot.utilities
+productName: JDot Utilities
 copyright: Copyright © 2026
 
 directories:
@@ -37,4 +37,4 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
-  shortcutName: Anvil
+  shortcutName: JDot Utilities

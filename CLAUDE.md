@@ -1,6 +1,6 @@
-# Anvil — project guide for Claude Code
+# JDot Utilities — project guide for Claude Code
 
-Anvil is a **local, offline desktop file converter** (Electron). No network, no
+JDot Utilities is a **local, offline desktop file converter** (Electron). No network, no
 account, no upload — files never leave the machine. Packaged as a Windows `.exe`.
 Built around a **tool registry** so adding a converter is one self-describing file.
 

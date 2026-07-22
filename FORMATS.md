@@ -1,4 +1,4 @@
-# Anvil — Format & Conversion Reference
+# JDot Utilities — Format & Conversion Reference
 
 How to read this: **within a tool, any listed input converts to any listed output**
 unless a note says otherwise. Each planned tool names the engine that would power

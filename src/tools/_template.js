@@ -1,5 +1,5 @@
 /**
- * ANVIL TOOL TEMPLATE
+ * JDOT UTILITIES — TOOL TEMPLATE
  * ===================
  * To add a tool: copy this file, rename it (e.g. `audio-convert.js`), fill in the
  * descriptor, and implement `convert()`. Drop it in this folder. That's it —
