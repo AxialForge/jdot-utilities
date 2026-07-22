@@ -1,0 +1,40 @@
+appId: com.anvil.converter
+productName: Anvil
+copyright: Copyright © 2026
+
+directories:
+  output: dist
+  buildResources: build
+
+files:
+  - src/**/*
+  - package.json
+  - "!**/*.map"
+
+# sharp ships native binaries that can't run from inside the asar archive,
+# so they must be unpacked. (electron-builder bundles production node_modules
+# automatically; dev dependencies are excluded.)
+asarUnpack:
+  - "**/node_modules/sharp/**"
+  - "**/node_modules/@img/**"
+
+# When you add tools that shell out to bundled binaries (ffmpeg, etc.),
+# drop them in resources/bin/ and uncomment this so they ship with the app:
+# extraResources:
+#   - from: resources/bin
+#     to: bin
+
+win:
+  target:
+    - nsis
+    - portable
+  # Place a 256x256+ icon at build/icon.ico. If absent, electron-builder uses a default.
+  icon: build/icon.ico
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Anvil

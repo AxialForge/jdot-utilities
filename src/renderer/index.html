@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="en" data-theme="grey">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Anvil</title>
+    <style>
+      /* ── Theme tokens ─────────────────────────────────────── */
+      :root, [data-theme="grey"] {
+        --bg:#1b1c1e; --panel:#232427; --panel-2:#2a2b2f; --line:#37383d;
+        --text:#e7e7ea; --muted:#9a9ba2;
+        --accent:#e0913c; --accent-strong:#f0a24d; --accent-dim:rgba(224,145,60,.15); --on-accent:#241606;
+        --ok:#5fd08a; --err:#e0736c; --warn:#e0b15f;
+      }
+      [data-theme="black"] {
+        --bg:#0a0a0b; --panel:#141416; --panel-2:#1b1b1e; --line:#282829;
+        --text:#ededf0; --muted:#8a8a90;
+        --accent:#e0913c; --accent-strong:#f0a24d; --accent-dim:rgba(224,145,60,.16); --on-accent:#241606;
+        --ok:#5fd08a; --err:#e0736c; --warn:#e0b15f;
+      }
+      [data-theme="light"] {
+        --bg:#f3f3f1; --panel:#ffffff; --panel-2:#ecebe8; --line:#dadad5;
+        --text:#1c1c1e; --muted:#6c6c72;
+        --accent:#b26a1c; --accent-strong:#9c5c15; --accent-dim:rgba(178,106,28,.13); --on-accent:#ffffff;
+        --ok:#3f9d68; --err:#c0453e; --warn:#a9761b;
+      }
+      * { box-sizing:border-box; }
+      html,body { margin:0; height:100%; }
+      body { background:var(--bg); color:var(--text);
+        font-family:system-ui,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; font-size:14px;
+        display:flex; flex-direction:column; -webkit-user-select:none; user-select:none; }
+      .mono { font-family:ui-monospace,"Cascadia Code",Consolas,"SF Mono",monospace; }
+      .muted { color:var(--muted); }
+
+      .topbar { display:flex; align-items:center; gap:16px; padding:10px 16px; border-bottom:1px solid var(--line); background:var(--panel); }
+      .brand { display:flex; align-items:center; gap:9px; font-weight:700; letter-spacing:.02em; }
+      .mark { width:14px; height:14px; background:var(--accent);
+        clip-path:polygon(0 60%,70% 60%,70% 40%,100% 40%,85% 75%,30% 75%,30% 100%,0 100%); }
+      .tabs { display:flex; gap:4px; margin-left:8px; }
+      .tab { border:0; background:transparent; color:var(--muted); padding:7px 14px; border-radius:7px; cursor:pointer; font-size:13.5px; font-family:inherit; }
+      .tab:hover { color:var(--text); background:var(--panel-2); }
+      .tab.active { color:var(--text); background:var(--accent-dim); box-shadow:inset 0 -2px 0 var(--accent); }
+      .spacer { margin-left:auto; }
+      .badge { font-size:10.5px; color:var(--on-accent); background:var(--warn); padding:2px 7px; border-radius:4px; }
+      .ver { font-size:11px; color:var(--muted); }
+
+      main { flex:1; min-height:0; display:flex; }
+      [data-view] { flex:1; min-height:0; display:flex; }
+      [hidden] { display:none !important; }
+
+      .rail { width:200px; background:var(--panel); border-right:1px solid var(--line); overflow-y:auto; }
+      .rail-head, .ctl-head, .set-head { font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); font-weight:600; }
+      .rail-head { padding:14px 16px 6px; }
+      .cat-label { font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); padding:12px 16px 3px; }
+      .tool-btn { display:block; width:100%; text-align:left; padding:9px 16px; border:0; border-left:2px solid transparent; background:transparent; color:var(--text); cursor:pointer; font-family:inherit; font-size:13.5px; }
+      .tool-btn:hover { background:var(--panel-2); }
+      .tool-btn.active { background:var(--accent-dim); border-left-color:var(--accent); }
+
+      .stage { flex:1; min-width:0; padding:16px 18px; overflow-y:auto; display:flex; flex-direction:column; }
+      .stage h1 { margin:0 0 2px; font-size:17px; }
+      .stage .desc { margin:0 0 12px; font-size:13px; color:var(--muted); }
+      .drop { border:1.5px dashed var(--line); border-radius:9px; background:var(--panel); padding:18px; text-align:center; transition:border-color .15s, background .15s; }
+      .drop.hot { border-color:var(--accent); background:var(--accent-dim); }
+      .drop .row { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-top:8px; }
+      .accept { font-size:11px; color:var(--muted); margin-top:8px; }
+      .summary { display:flex; align-items:center; gap:12px; margin:14px 0 4px; font-size:12.5px; }
+      .summary .grow { flex:1; }
+      .bar { height:6px; background:var(--panel-2); border-radius:4px; overflow:hidden; margin:2px 0 10px; }
+      .bar > i { display:block; height:100%; width:0; background:var(--accent); transition:width .2s; }
+      .queue { display:flex; flex-direction:column; gap:5px; }
+      .job { display:grid; grid-template-columns:12px 1fr auto auto; align-items:center; gap:12px; padding:9px 12px; background:var(--panel); border:1px solid var(--line); border-radius:6px; }
+      .led { width:9px; height:9px; border-radius:50%; background:var(--muted); }
+      .led.busy { background:var(--accent); animation:pulse 1s infinite; }
+      .led.ok { background:var(--ok); } .led.err { background:var(--err); }
+      @keyframes pulse { 50% { opacity:.35; } }
+      .job-name { font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+      .job-name.reject { color:var(--muted); text-decoration:line-through; }
+      .flow { display:flex; align-items:center; gap:7px; }
+      .chip { font-family:ui-monospace,Consolas,monospace; font-size:11px; padding:2px 7px; border-radius:4px; background:var(--panel-2); color:var(--muted); text-transform:uppercase; }
+      .chip.out { background:var(--accent-dim); color:var(--accent); }
+      .arrow { color:var(--muted); }
+      .job-x { border:0; background:transparent; color:var(--muted); cursor:pointer; font-size:15px; }
+      .job-x:hover { color:var(--err); }
+
+      .controls { width:250px; background:var(--panel); border-left:1px solid var(--line); padding:16px; overflow-y:auto; }
+      .ctl-head { padding-bottom:10px; }
+      .field { display:block; margin-bottom:13px; }
+      .field-label { display:block; font-size:12px; color:var(--muted); margin-bottom:5px; }
+      select, input[type="number"], input[type="text"] { width:100%; padding:8px 9px; background:var(--bg); color:var(--text); border:1px solid var(--line); border-radius:5px; font-family:inherit; font-size:13px; }
+      .saveline { font-size:11.5px; color:var(--muted); margin:0 0 12px; word-break:break-all; }
+      .saveline a { color:var(--accent); cursor:pointer; }
+      .btn { border:1px solid var(--line); background:var(--panel-2); color:var(--text); padding:8px 13px; border-radius:6px; cursor:pointer; font-family:inherit; font-size:13px; }
+      .btn:hover { border-color:var(--accent); }
+      .btn.small { padding:6px 10px; font-size:12px; }
+      .btn.primary { background:var(--accent); border-color:var(--accent); color:var(--on-accent); font-weight:650; }
+      .btn.primary:hover { background:var(--accent-strong); }
+      .btn:disabled { opacity:.4; cursor:not-allowed; }
+      .btn.block { width:100%; margin-top:6px; padding:11px; font-size:14px; }
+
+      .pane { flex:1; padding:20px 22px; overflow-y:auto; max-width:760px; margin:0 auto; width:100%; }
+      .pane h1 { font-size:18px; margin:0 0 3px; }
+      .pane .desc { color:var(--muted); font-size:13px; margin:0 0 16px; }
+      .pdf-row { display:grid; grid-template-columns:auto 1fr auto auto; align-items:center; gap:10px; padding:10px 12px; background:var(--panel); border:1px solid var(--line); border-radius:7px; margin-bottom:6px; }
+      .idx { font-family:ui-monospace,Consolas,monospace; font-size:12px; color:var(--muted); width:22px; text-align:center; }
+      .pdf-name { font-size:13.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+      .pdf-pages { font-size:11.5px; color:var(--muted); }
+      .mv { display:flex; gap:4px; }
+      .mv button, .rm { border:1px solid var(--line); background:var(--panel-2); color:var(--text); width:26px; height:26px; border-radius:5px; cursor:pointer; font-size:13px; }
+      .mv button:disabled { opacity:.35; cursor:not-allowed; }
+      .rm:hover { border-color:var(--err); color:var(--err); }
+      .merge-actions { display:flex; gap:10px; align-items:center; margin-top:14px; }
+
+      .set-group { margin-bottom:22px; }
+      .set-head { margin-bottom:10px; }
+      .set-row { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:12px 0; border-bottom:1px solid var(--line); }
+      .set-row .info { max-width:58%; }
+      .set-row .info .t { font-size:14px; } .set-row .info .h { font-size:12px; color:var(--muted); margin-top:2px; }
+      .seg { display:flex; border:1px solid var(--line); border-radius:7px; overflow:hidden; }
+      .seg button { border:0; background:var(--panel); color:var(--muted); padding:7px 14px; cursor:pointer; font-family:inherit; font-size:13px; }
+      .seg button + button { border-left:1px solid var(--line); }
+      .seg button.on { background:var(--accent); color:var(--on-accent); font-weight:600; }
+      .range { display:flex; align-items:center; gap:10px; }
+      input[type="range"] { accent-color:var(--accent); }
+
+      footer { border-top:1px solid var(--line); padding:7px 16px; font-size:11.5px; color:var(--muted); background:var(--panel); font-family:ui-monospace,Consolas,monospace; }
+      ::-webkit-scrollbar { width:10px; height:10px; }
+      ::-webkit-scrollbar-thumb { background:var(--line); border-radius:5px; }
+      @media (prefers-reduced-motion: reduce) { *{ transition:none !important; animation:none !important; } }
+    </style>
+  </head>
+  <body>
+    <div class="topbar">
+      <span class="brand"><span class="mark"></span> <span id="appName">Anvil</span></span>
+      <div class="tabs">
+        <button class="tab active" data-tab="convert">Convert</button>
+        <button class="tab" data-tab="merge">Merge PDF</button>
+        <button class="tab" data-tab="settings">Settings</button>
+      </div>
+      <span class="spacer"></span>
+      <span class="badge" id="previewBadge" hidden>Preview</span>
+      <span class="ver" id="ver"></span>
+    </div>
+
+    <main>
+      <section data-view="convert">
+        <nav class="rail"><div class="rail-head">Tools</div><div id="toolList"></div></nav>
+        <div class="stage">
+          <h1 id="toolName">Pick a tool</h1>
+          <p class="desc" id="toolDesc">Choose a tool, then add files.</p>
+          <div class="drop" id="drop">
+            <div>Drop files here</div>
+            <div class="row">
+              <button class="btn small" id="addFiles">Add files</button>
+              <button class="btn small" id="addFolder">Add folder</button>
+              <button class="btn small" id="clearFiles">Clear</button>
+            </div>
+            <div class="accept mono" id="accept"></div>
+          </div>
+          <div class="summary"><span id="sumText" class="grow muted">No files yet.</span><span class="muted" id="pctText"></span></div>
+          <div class="bar"><i id="barFill"></i></div>
+          <div class="queue" id="queue"></div>
+        </div>
+        <aside class="controls">
+          <div class="ctl-head">Output</div>
+          <label class="field"><span class="field-label">Format</span><select id="formatSelect" class="mono"></select></label>
+          <div id="optionFields"></div>
+          <p class="saveline" id="saveLine"></p>
+          <button class="btn primary block" id="convertBtn" disabled>Convert</button>
+        </aside>
+      </section>
+
+      <section data-view="merge" hidden>
+        <div class="pane">
+          <h1>Merge PDF</h1>
+          <p class="desc">Combine multiple PDFs into one. Reorder with the arrows.</p>
+          <div style="display:flex; gap:8px; margin-bottom:14px;">
+            <button class="btn small" id="addPdfs">Add PDFs</button>
+            <button class="btn small" id="clearPdfs">Clear</button>
+          </div>
+          <div id="pdfList"></div>
+          <div class="merge-actions">
+            <button class="btn primary" id="mergeBtn" disabled>Merge into one PDF</button>
+            <span class="muted" id="mergeNote"></span>
+          </div>
+        </div>
+      </section>
+
+      <section data-view="settings" hidden>
+        <div class="pane">
+          <h1>Settings</h1>
+          <p class="desc">Preferences are saved and applied across the app.</p>
+          <div class="set-group">
+            <div class="set-head">Appearance</div>
+            <div class="set-row">
+              <div class="info"><div class="t">Theme</div><div class="h">Colour scheme for the whole app.</div></div>
+              <div class="seg" id="themeSeg">
+                <button data-theme-val="light">Light</button>
+                <button data-theme-val="grey">Grey</button>
+                <button data-theme-val="black">Black</button>
+              </div>
+            </div>
+          </div>
+          <div class="set-group">
+            <div class="set-head">Conversion</div>
+            <div class="set-row">
+              <div class="info"><div class="t">Save output to</div><div class="h" id="outDirText">Next to each source file.</div></div>
+              <div style="display:flex; gap:8px;">
+                <button class="btn small" id="chooseOut">Choose…</button>
+                <button class="btn small" id="clearOut">Reset</button>
+              </div>
+            </div>
+            <div class="set-row">
+              <div class="info"><div class="t">Add folder includes subfolders</div><div class="h">When adding a folder, also pull files from nested subfolders.</div></div>
+              <div class="seg" id="subSeg"><button data-sub-val="off">Off</button><button data-sub-val="on">On</button></div>
+            </div>
+            <div class="set-row">
+              <div class="info"><div class="t">Default PDF page size</div><div class="h">Used by Document → PDF.</div></div>
+              <select id="pageSizeSet" style="width:130px"><option>Letter</option><option>A4</option><option>Legal</option><option>Tabloid</option></select>
+            </div>
+            <div class="set-row">
+              <div class="info"><div class="t">Batch concurrency</div><div class="h">Files processed at once. Lower is gentler; higher is faster for big batches.</div></div>
+              <div class="range"><input type="range" id="concRange" min="1" max="16" /><span class="mono" id="concVal">4</span></div>
+            </div>
+          </div>
+          <div class="set-group">
+            <div class="set-head">Performance</div>
+            <div class="set-row">
+              <div class="info"><div class="t">Hardware acceleration</div><div class="h">Uses the GPU where supported (PDF rendering, future video). Takes effect on restart.</div></div>
+              <div class="seg" id="hwSeg">
+                <button data-hw-val="auto">Auto</button>
+                <button data-hw-val="on">On</button>
+                <button data-hw-val="off">Off</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="set-group">
+            <div class="set-head">Office (LibreOffice)</div>
+            <div class="set-row">
+              <div class="info"><div class="t">LibreOffice</div><div class="h" id="loStatus">Checking…</div></div>
+              <div style="display:flex; gap:8px;">
+                <button class="btn small" id="chooseLo">Choose…</button>
+                <button class="btn small" id="resetLo">Auto</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer id="status">Ready</footer>
+    <input type="file" id="fileInput" multiple hidden />
+    <input type="file" id="pdfInput" accept="application/pdf,.pdf" multiple hidden />
+
+    <script>
+      const api = window.api || null;
+      const hasApi = !!api;
+      const $ = (id) => document.getElementById(id);
+      const base = (p) => p.split(/[\\/]/).pop();
+      const extOf = (n) => (n.split(".").pop() || "").toLowerCase();
+
+      const FALLBACK_TOOLS = [
+        { id:"image-convert", name:"Image Converter", category:"Image", description:"Convert between image formats (incl. WebP, AVIF, HEIC), with optional resize and quality.",
+          inputFormats:["png","jpg","jpeg","webp","avif","tiff","gif","svg","heic","heif"], outputFormats:["png","jpg","jpeg","webp","avif","tiff","gif"],
+          options:[{key:"maxWidth",label:"Max width (px, 0 = keep original)",type:"number",min:0,max:40000,default:0},
+                   {key:"quality",label:"Quality (JPEG/WebP/AVIF)",type:"number",min:1,max:100,default:90}] },
+        { id:"document-convert", name:"Document Converter", category:"Document", description:"Convert between Markdown, HTML, Word (.docx), plain text, and PDF.",
+          inputFormats:["md","markdown","html","htm","docx","txt"], outputFormats:["html","md","txt","pdf","docx"],
+          options:[{key:"pageSize",label:"PDF page size",type:"select",choices:["Letter","A4","Legal","Tabloid"],default:"Letter"}] },
+        { id:"office-word", name:"Word Documents", category:"Office", description:"Convert Word/OpenDocument text and to PDF. Requires LibreOffice.",
+          inputFormats:["docx","doc","odt","rtf"], outputFormats:["pdf","docx","odt","rtf"], options:[] },
+        { id:"office-sheet", name:"Spreadsheets", category:"Office", description:"Convert spreadsheets and to PDF. Requires LibreOffice.",
+          inputFormats:["xlsx","xls","ods","csv"], outputFormats:["pdf","xlsx","ods","csv"], options:[] },
+        { id:"office-slides", name:"Presentations", category:"Office", description:"Convert presentations and to PDF. Requires LibreOffice.",
+          inputFormats:["pptx","ppt","odp"], outputFormats:["pdf","pptx","odp"], options:[] },
+      ];
+
+      let SETTINGS = { theme:"grey", defaultOutputDir:null, pdfPageSize:"Letter", concurrency:4, hardwareAcceleration:"auto", recurseFolders:false, libreOfficePath:null };
+      const applyTheme = (t) => document.documentElement.setAttribute("data-theme", t);
+      async function saveSettings(patch){ SETTINGS = { ...SETTINGS, ...patch }; if (hasApi) SETTINGS = await api.setSettings(patch); }
+
+      function showTab(name){
+        document.querySelectorAll("[data-view]").forEach((v)=> v.hidden = v.dataset.view !== name);
+        document.querySelectorAll(".tab").forEach((b)=> b.classList.toggle("active", b.dataset.tab === name));
+      }
+      document.querySelectorAll(".tab").forEach((b)=> b.onclick = ()=> showTab(b.dataset.tab));
+
+      const C = { tools:[], active:null, jobs:[], done:0 };
+      function renderRail(){
+        const byCat = {}; C.tools.forEach((t)=> (byCat[t.category] ||= []).push(t));
+        const list = $("toolList"); list.innerHTML = "";
+        Object.keys(byCat).sort().forEach((cat)=>{
+          const l = document.createElement("div"); l.className="cat-label"; l.textContent=cat; list.appendChild(l);
+          byCat[cat].forEach((t)=>{ const b=document.createElement("button"); b.className="tool-btn"; b.textContent=t.name; b.dataset.id=t.id; b.onclick=()=>selectTool(t.id); list.appendChild(b); });
+        });
+      }
+      function selectTool(id){
+        C.active = C.tools.find((t)=>t.id===id);
+        document.querySelectorAll(".tool-btn").forEach((b)=> b.classList.toggle("active", b.dataset.id===id));
+        $("toolName").textContent = C.active.name; $("toolDesc").textContent = C.active.description || "";
+        $("accept").textContent = "Accepts: " + C.active.inputFormats.join(", ");
+        const fmt=$("formatSelect"); fmt.innerHTML="";
+        C.active.outputFormats.forEach((f)=>{ const o=document.createElement("option"); o.value=f; o.textContent=f.toUpperCase(); fmt.appendChild(o); });
+        renderOptions(C.active.options||[]); renderQueue(); updateConvert();
+      }
+      function renderOptions(opts){
+        const w=$("optionFields"); w.innerHTML="";
+        opts.forEach((opt)=>{
+          const lab=document.createElement("label"); lab.className="field";
+          const s=document.createElement("span"); s.className="field-label"; s.textContent=opt.label||opt.key; lab.appendChild(s);
+          let inp;
+          if (opt.type==="select"){ inp=document.createElement("select"); (opt.choices||[]).forEach((c)=>{ const o=document.createElement("option"); o.value=c; o.textContent=c; inp.appendChild(o); }); if (opt.key==="pageSize") inp.value=SETTINGS.pdfPageSize; }
+          else { inp=document.createElement("input"); inp.type=opt.type==="number"?"number":"text"; if(opt.min!=null)inp.min=opt.min; if(opt.max!=null)inp.max=opt.max; if(opt.default!=null)inp.value=opt.default; }
+          inp.dataset.key=opt.key; inp.dataset.type=opt.type||"text"; lab.appendChild(inp); w.appendChild(lab);
+        });
+      }
+      function collectOptions(){ const out={}; document.querySelectorAll("#optionFields [data-key]").forEach((el)=>{ out[el.dataset.key]= el.dataset.type==="number"?Number(el.value):el.value; }); return out; }
+      const accepts = (ext)=> C.active ? C.active.inputFormats.includes(ext) : false;
+
+      function addPaths(paths){
+        paths.forEach((p)=>{ if(!C.jobs.some((j)=>j.path===p)) C.jobs.push({ path:p, name:base(p), ext:extOf(p) }); });
+        if(!C.active && C.jobs.length){ const hit=C.tools.find((t)=>t.inputFormats.includes(C.jobs[0].ext)); if(hit) selectTool(hit.id); }
+        C.done=0; renderQueue(); updateConvert();
+      }
+      function renderQueue(){
+        const q=$("queue"); const outFmt=$("formatSelect").value||"?";
+        q.innerHTML = C.jobs.map((job,i)=>{ const ok=accepts(job.ext); return `
+          <div class="job" data-i="${i}"><span class="led"></span>
+            <span class="job-name ${ok?"":"reject"}" title="${job.path}">${job.name}</span>
+            <span class="flow"><span class="chip">${job.ext||"?"}</span><span class="arrow">&rarr;</span><span class="chip out">${ok?outFmt:"—"}</span></span>
+            <button class="job-x" data-rm="${i}">&times;</button></div>`; }).join("");
+        q.querySelectorAll("[data-rm]").forEach((b)=> b.onclick=()=>{ C.jobs.splice(+b.dataset.rm,1); renderQueue(); updateConvert(); });
+        updateSummary();
+      }
+      function eligible(){ return C.jobs.map((j,i)=>({j,i})).filter(({j})=>accepts(j.ext)); }
+      function updateConvert(){ $("convertBtn").disabled = !C.active || eligible().length===0; }
+      function updateSummary(){
+        const total=C.jobs.length, ok=eligible().length, skip=total-ok;
+        $("sumText").textContent = total===0 ? "No files yet." : `${total} file${total>1?"s":""} · ${ok} ready${skip?` · ${skip} skipped`:""}`;
+        const pct = ok? Math.round((C.done/ok)*100):0;
+        $("pctText").textContent = C.done? `${C.done}/${ok} done` : "";
+        $("barFill").style.width = (C.done?pct:0)+"%";
+      }
+      function setSaveLine(){
+        $("saveLine").innerHTML = SETTINGS.defaultOutputDir ? `Saving to: ${SETTINGS.defaultOutputDir} · <a id="toSet1">change</a>` : `Saving next to each source file · <a id="toSet1">change</a>`;
+        const a=$("toSet1"); if(a) a.onclick=()=>showTab("settings");
+      }
+
+      async function addFilesAction(){ if(hasApi) addPaths(await api.pickFiles()); else $("fileInput").click(); }
+      async function addFolderAction(){ if(hasApi) addPaths(await api.addFolderFiles()); else setStatus("Folder import runs in the installed app."); }
+      $("addFiles").onclick=addFilesAction; $("addFolder").onclick=addFolderAction;
+      $("clearFiles").onclick=()=>{ C.jobs=[]; C.done=0; renderQueue(); updateConvert(); };
+      $("fileInput").onchange=(e)=> addPaths([...e.target.files].map((f)=>f.name));
+      $("formatSelect").onchange=renderQueue;
+
+      const drop=$("drop");
+      ["dragenter","dragover"].forEach((e)=> drop.addEventListener(e,(ev)=>{ ev.preventDefault(); drop.classList.add("hot"); }));
+      ["dragleave","drop"].forEach((e)=> drop.addEventListener(e,(ev)=>{ ev.preventDefault(); drop.classList.remove("hot"); }));
+      drop.addEventListener("drop",(ev)=>{ const paths=[]; for(const f of ev.dataTransfer.files){ const p=hasApi?api.pathForFile(f):f.name; if(p) paths.push(p); } addPaths(paths); });
+
+      async function runConvert(){
+        const elig=eligible(); if(!C.active||!elig.length) return;
+        $("convertBtn").disabled=true; C.done=0; updateSummary();
+        elig.forEach(({i})=>{ const led=document.querySelector(`.job[data-i="${i}"] .led`); if(led) led.className="led busy"; });
+        setStatus(`Converting ${elig.length} file(s)…`);
+        if(!hasApi){ for(const {i} of elig){ await new Promise((r)=>setTimeout(r,120)); const led=document.querySelector(`.job[data-i="${i}"] .led`); if(led) led.className="led ok"; C.done++; updateSummary(); } setStatus("Preview — real conversion runs in the installed app."); updateConvert(); return; }
+        const { results, error } = await api.convert({ toolId:C.active.id, files:elig.map(({j})=>j.path), outputFormat:$("formatSelect").value, options:collectOptions(), outputDir:SETTINGS.defaultOutputDir });
+        if(error){ setStatus("Error: "+error); updateConvert(); return; }
+        const okc=results.filter((r)=>r.ok).length; setStatus(`Done — ${okc}/${results.length} converted`); updateConvert();
+      }
+      $("convertBtn").onclick=runConvert;
+      if(hasApi){ api.onFileDone((r)=>{ const led=document.querySelector(`.job[data-i="${r.index}"] .led`); if(led) led.className="led "+(r.ok?"ok":"err"); C.done++; updateSummary(); }); }
+
+      const M = { pdfs:[] };
+      function renderPdfs(){
+        const l=$("pdfList");
+        l.innerHTML = M.pdfs.map((p,i)=>`
+          <div class="pdf-row"><span class="idx">${i+1}</span>
+            <div><div class="pdf-name" title="${p.path}">${p.name}</div><div class="pdf-pages">${p.pages!=null?p.pages+" pages":""}</div></div>
+            <div class="mv"><button data-up="${i}" ${i===0?"disabled":""}>&uarr;</button><button data-dn="${i}" ${i===M.pdfs.length-1?"disabled":""}>&darr;</button></div>
+            <button class="rm" data-rm="${i}">&times;</button></div>`).join("");
+        l.querySelectorAll("[data-up]").forEach((b)=> b.onclick=()=>move(+b.dataset.up,-1));
+        l.querySelectorAll("[data-dn]").forEach((b)=> b.onclick=()=>move(+b.dataset.dn,1));
+        l.querySelectorAll("[data-rm]").forEach((b)=> b.onclick=()=>{ M.pdfs.splice(+b.dataset.rm,1); renderPdfs(); });
+        $("mergeBtn").disabled = M.pdfs.length<2;
+      }
+      function move(i,d){ const j=i+d; if(j<0||j>=M.pdfs.length) return; [M.pdfs[i],M.pdfs[j]]=[M.pdfs[j],M.pdfs[i]]; renderPdfs(); }
+      async function addPdfs(paths){ for(const p of paths){ if(extOf(p)!=="pdf") continue; if(M.pdfs.some((x)=>x.path===p)) continue; const pages=hasApi?await api.pdfPageCount(p):null; M.pdfs.push({ path:p, name:base(p), pages }); } renderPdfs(); }
+      $("addPdfs").onclick=async()=>{ if(hasApi){ const f=await api.pickFiles(); addPdfs(f.filter((p)=>extOf(p)==="pdf")); } else $("pdfInput").click(); };
+      $("pdfInput").onchange=(e)=> addPdfs([...e.target.files].map((f)=>f.name));
+      $("clearPdfs").onclick=()=>{ M.pdfs=[]; renderPdfs(); };
+      $("mergeBtn").onclick=async()=>{
+        if(!hasApi){ $("mergeNote").textContent="Preview — merging runs in the installed app."; return; }
+        $("mergeBtn").disabled=true; $("mergeNote").textContent="Merging…";
+        const res=await api.mergePdf({ files:M.pdfs.map((p)=>p.path), defaultName:"merged.pdf" });
+        if(res.canceled) $("mergeNote").textContent="Cancelled.";
+        else if(res.ok) $("mergeNote").textContent=`Merged ${M.pdfs.length} files → ${res.pages} pages.`;
+        else $("mergeNote").textContent="Error: "+res.error;
+        $("mergeBtn").disabled = M.pdfs.length<2;
+      };
+
+      function paintSettings(){
+        document.querySelectorAll("#themeSeg button").forEach((b)=> b.classList.toggle("on", b.dataset.themeVal===SETTINGS.theme));
+        document.querySelectorAll("#hwSeg button").forEach((b)=> b.classList.toggle("on", b.dataset.hwVal===SETTINGS.hardwareAcceleration));
+        document.querySelectorAll("#subSeg button").forEach((b)=> b.classList.toggle("on", (b.dataset.subVal==="on")===!!SETTINGS.recurseFolders));
+        $("pageSizeSet").value=SETTINGS.pdfPageSize; $("concRange").value=SETTINGS.concurrency; $("concVal").textContent=SETTINGS.concurrency;
+        $("outDirText").textContent = SETTINGS.defaultOutputDir || "Next to each source file."; setSaveLine();
+      }
+      document.querySelectorAll("#themeSeg button").forEach((b)=> b.onclick=async()=>{ applyTheme(b.dataset.themeVal); await saveSettings({theme:b.dataset.themeVal}); paintSettings(); });
+      document.querySelectorAll("#hwSeg button").forEach((b)=> b.onclick=async()=>{ await saveSettings({hardwareAcceleration:b.dataset.hwVal}); paintSettings(); setStatus("Hardware acceleration applies on restart."); });
+      document.querySelectorAll("#subSeg button").forEach((b)=> b.onclick=async()=>{ await saveSettings({recurseFolders:b.dataset.subVal==="on"}); paintSettings(); });
+      $("pageSizeSet").onchange=async(e)=>{ await saveSettings({pdfPageSize:e.target.value}); paintSettings(); };
+      $("concRange").oninput=(e)=>{ $("concVal").textContent=e.target.value; };
+      $("concRange").onchange=async(e)=>{ await saveSettings({concurrency:Number(e.target.value)}); };
+      $("chooseOut").onclick=async()=>{ if(!hasApi){ setStatus("Choosing a folder runs in the installed app."); return; } const dir=await api.pickFolder(); if(dir){ await saveSettings({defaultOutputDir:dir}); paintSettings(); } };
+      $("clearOut").onclick=async()=>{ await saveSettings({defaultOutputDir:null}); paintSettings(); };
+
+      async function refreshOffice(){
+        const el=$("loStatus"); if(!el) return;
+        if(!hasApi){ el.textContent="Detected automatically in the installed app."; return; }
+        const p=await api.locateOffice();
+        el.textContent = p ? ("Found: "+p) : "Not found — install LibreOffice, or choose the soffice binary.";
+      }
+      $("chooseLo").onclick=async()=>{ if(!hasApi){ setStatus("Runs in the installed app."); return; } const p=await api.pickOneFile(); if(p){ await saveSettings({libreOfficePath:p}); refreshOffice(); } };
+      $("resetLo").onclick=async()=>{ await saveSettings({libreOfficePath:null}); refreshOffice(); };
+
+      function setStatus(t){ $("status").textContent=t; }
+
+      (async ()=>{
+        if(hasApi){ const info=await api.info(); $("appName").textContent=info.name; document.title=info.name; $("ver").textContent="v"+info.version; SETTINGS=await api.getSettings(); C.tools=await api.listTools(); }
+        else { $("previewBadge").hidden=false; $("ver").textContent="preview"; C.tools=FALLBACK_TOOLS; }
+        applyTheme(SETTINGS.theme); renderRail(); paintSettings(); refreshOffice(); renderPdfs(); setSaveLine(); updateSummary();
+        if(C.tools[0]) selectTool(C.tools[0].id);
+      })();
+    </script>
+  </body>
+</html>

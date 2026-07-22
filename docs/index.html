@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Anvil — Local file conversion</title>
+    <meta name="description" content="A desktop file converter that runs entirely on your machine. No cloud, no account, no upload." />
+    <style>
+      :root {
+        --bg: #15181d; --panel: #1c2027; --panel-2: #21262e; --line: #2b313b;
+        --text: #e6e9ef; --muted: #8a93a2; --accent: #3db2c4;
+        --accent-dim: rgba(61,178,196,.14); --ok: #5fd08a;
+        --mono: ui-monospace, "Cascadia Code", Consolas, "SF Mono", monospace;
+        --sans: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      }
+      * { box-sizing: border-box; }
+      html { scroll-behavior: smooth; }
+      body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--sans); line-height: 1.6; }
+      .mono { font-family: var(--mono); }
+      a { color: var(--accent); text-decoration: none; }
+      .wrap { max-width: 940px; margin: 0 auto; padding: 0 22px; }
+
+      nav { display: flex; align-items: center; justify-content: space-between;
+            padding: 16px 0; border-bottom: 1px solid var(--line); }
+      .brand { display: flex; align-items: center; gap: 9px; font-weight: 700; letter-spacing: .02em; }
+      .mark { width: 15px; height: 15px; background: var(--accent);
+        clip-path: polygon(0 60%,70% 60%,70% 40%,100% 40%,85% 75%,30% 75%,30% 100%,0 100%); }
+      nav a.gh { color: var(--muted); font-size: 14px; }
+
+      /* Hero */
+      .hero { display: grid; grid-template-columns: 1.05fr .95fr; gap: 40px;
+              align-items: center; padding: 74px 0 60px; }
+      .eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .12em;
+                 text-transform: uppercase; color: var(--accent); margin: 0 0 16px; }
+      h1 { font-size: 46px; line-height: 1.08; margin: 0 0 18px; font-weight: 720; letter-spacing: -.01em; }
+      .sub { color: var(--muted); font-size: 17px; margin: 0 0 28px; max-width: 42ch; }
+      .cta { display: flex; gap: 12px; flex-wrap: wrap; }
+      .btn { display: inline-block; padding: 11px 20px; border-radius: 7px; font-size: 15px; font-weight: 600; }
+      .btn.primary { background: var(--accent); color: #06222a; }
+      .btn.ghost { border: 1px solid var(--line); color: var(--text); }
+      .btn.ghost:hover { border-color: #3a424e; }
+
+      /* Signature: a work-order card mirroring the app */
+      .order { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+      .order-top { display: flex; align-items: baseline; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+      .order-top .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); }
+      .order-top .t { font-weight: 650; }
+      .order-top .r { margin-left: auto; color: var(--muted); font-family: var(--mono); font-size: 11px; }
+      .row { display: grid; grid-template-columns: 12px 1fr auto; align-items: center; gap: 12px; padding: 11px 16px; }
+      .row + .row { border-top: 1px solid var(--line); }
+      .led { width: 9px; height: 9px; border-radius: 50%; background: var(--ok); }
+      .fname { font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .flow { display: flex; align-items: center; gap: 7px; }
+      .chip { font-family: var(--mono); font-size: 11px; padding: 2px 7px; border-radius: 4px;
+              background: var(--panel-2); color: var(--muted); text-transform: uppercase; }
+      .chip.out { background: var(--accent-dim); color: var(--accent); }
+      .arrow { color: var(--muted); }
+
+      /* Feature row */
+      .why { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; padding: 30px 0 64px; }
+      .card { background: var(--panel); border: 1px solid var(--line); border-radius: 9px; padding: 20px; }
+      .card h3 { margin: 0 0 7px; font-size: 16px; }
+      .card p { margin: 0; color: var(--muted); font-size: 14px; }
+
+      /* Extend */
+      .extend { border-top: 1px solid var(--line); padding: 56px 0; }
+      .extend h2 { font-size: 26px; margin: 0 0 8px; }
+      .extend p.lead { color: var(--muted); max-width: 60ch; margin: 0 0 22px; }
+      pre { background: #12151a; border: 1px solid var(--line); border-radius: 9px;
+            padding: 18px; overflow-x: auto; font-family: var(--mono); font-size: 13px; color: #cfd6e0; }
+      pre .c { color: var(--muted); }
+      pre .k { color: var(--accent); }
+
+      footer { border-top: 1px solid var(--line); padding: 26px 0; color: var(--muted); font-size: 13px;
+               display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+
+      @media (max-width: 760px) {
+        .hero { grid-template-columns: 1fr; padding: 48px 0 40px; }
+        h1 { font-size: 36px; }
+        .why { grid-template-columns: 1fr; }
+      }
+      @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <nav>
+        <span class="brand"><span class="mark"></span> Anvil</span>
+        <a class="gh" href="https://github.com/&lt;you&gt;/anvil">GitHub ↗</a>
+      </nav>
+
+      <header class="hero">
+        <div>
+          <p class="eyebrow">Offline desktop converter</p>
+          <h1>Your files never leave your machine.</h1>
+          <p class="sub">Anvil converts files entirely on your computer. No upload,
+            no account, no server to run — and no network required at all.</p>
+          <div class="cta">
+            <a class="btn primary" href="https://github.com/&lt;you&gt;/anvil/releases">Download for Windows</a>
+            <a class="btn ghost" href="https://github.com/&lt;you&gt;/anvil">View source</a>
+          </div>
+        </div>
+
+        <div class="order" aria-hidden="true">
+          <div class="order-top">
+            <span class="dot"></span><span class="t">Image Converter</span>
+            <span class="r">3 / 3 done · local</span>
+          </div>
+          <div class="row">
+            <span class="led"></span><span class="fname">diagram.png</span>
+            <span class="flow"><span class="chip">png</span><span class="arrow">&rarr;</span><span class="chip out">webp</span></span>
+          </div>
+          <div class="row">
+            <span class="led"></span><span class="fname">scan-2043.tiff</span>
+            <span class="flow"><span class="chip">tiff</span><span class="arrow">&rarr;</span><span class="chip out">jpg</span></span>
+          </div>
+          <div class="row">
+            <span class="led"></span><span class="fname">logo-master.bmp</span>
+            <span class="flow"><span class="chip">bmp</span><span class="arrow">&rarr;</span><span class="chip out">png</span></span>
+          </div>
+        </div>
+      </header>
+
+      <section class="why">
+        <div class="card">
+          <h3>Runs offline</h3>
+          <p>No server, no localhost, no upload step. Install the app and convert —
+             airplane mode works fine.</p>
+        </div>
+        <div class="card">
+          <h3>No account</h3>
+          <p>No sign-up, no JWT, no history database. Open it and go straight to work.</p>
+        </div>
+        <div class="card">
+          <h3>Built to extend</h3>
+          <p>Every tool is one self-describing file. Drop it in and the app renders
+             the interface for it automatically.</p>
+        </div>
+      </section>
+
+      <section class="extend">
+        <h2>Adding a tool is one file</h2>
+        <p class="lead">The interface is generated from the tool registry — the tool
+          rail, output formats, and option fields all come from what a tool exports.
+          There's nothing else to wire up.</p>
+        <pre><span class="c">// src/tools/data-convert.js</span>
+module.exports = {
+  <span class="k">id</span>: "data-convert",
+  <span class="k">name</span>: "Data Converter",
+  <span class="k">category</span>: "Data",
+  <span class="k">inputFormats</span>: ["json", "yaml", "csv"],
+  <span class="k">outputFormats</span>: ["json", "yaml", "csv"],
+  <span class="k">async convert</span>({ inputPath, outputPath, outputFormat }) {
+    <span class="c">/* read, transform, write — pure JS or a bundled binary */</span>
+  },
+};</pre>
+      </section>
+
+      <footer>
+        <span>Anvil · MIT licensed · runs 100% locally</span>
+        <span class="mono">Inspired by the ConvertX layout, rebuilt offline</span>
+      </footer>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Anvil — Home</title>
+    <!--
+      Anvil home screen. Standalone + offline. In the Electron app this replaces
+      the landing view: on detection it calls onConvert() (stubbed below) to hand
+      the file + chosen output to the real converter via window.api.
+      Detection reads magic bytes first, falls back to file extension.
+    -->
+    <style>
+      :root {
+        --bg:#15181d; --panel:#1c2027; --panel-2:#21262e; --line:#2b313b;
+        --text:#e6e9ef; --muted:#8a93a2; --accent:#3db2c4;
+        --accent-dim:rgba(61,178,196,.14); --ok:#5fd08a; --warn:#e0b15f;
+        --mono:ui-monospace,"Cascadia Code",Consolas,"SF Mono",monospace;
+        --sans:system-ui,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+      }
+      *{box-sizing:border-box}
+      body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);
+           min-height:100vh;display:flex;flex-direction:column}
+      .mono{font-family:var(--mono)}
+      .muted{color:var(--muted)}
+      .wrap{max-width:860px;margin:0 auto;width:100%;padding:22px 20px 40px}
+
+      header{display:flex;align-items:baseline;gap:12px;margin-bottom:22px}
+      .brand{display:flex;align-items:center;gap:9px;font-weight:700;letter-spacing:.02em;font-size:17px}
+      .mark{width:14px;height:14px;background:var(--accent);
+        clip-path:polygon(0 60%,70% 60%,70% 40%,100% 40%,85% 75%,30% 75%,30% 100%,0 100%)}
+      header .tag{color:var(--muted);font-size:13px}
+
+      /* Drop zone — the hero */
+      .drop{border:1.5px dashed var(--line);border-radius:12px;background:#171b21;
+            padding:40px 26px;text-align:center;transition:border-color .15s,background .15s;cursor:pointer}
+      .drop.hot{border-color:var(--accent);background:var(--accent-dim)}
+      .drop h2{margin:0 0 4px;font-size:20px;font-weight:650}
+      .drop p{margin:4px 0;color:var(--muted)}
+      .drop .or{font-size:13px;margin:10px 0}
+      .browse{display:inline-block;padding:9px 16px;border:1px solid var(--line);
+              border-radius:7px;background:var(--panel-2);color:var(--text);font-size:14px;cursor:pointer}
+      .browse:hover{border-color:#3a424e}
+      input[type=file]{display:none}
+
+      /* Detection result panel */
+      .result{margin-top:16px;border:1px solid var(--line);border-radius:10px;
+              background:var(--panel);overflow:hidden;display:none}
+      .result.show{display:block}
+      .r-file{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line)}
+      .r-file .led{width:9px;height:9px;border-radius:50%;background:var(--ok);flex:none}
+      .r-file .led.warn{background:var(--warn)}
+      .r-name{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      .r-detected{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--muted);flex:none}
+      .r-body{padding:14px 16px}
+      .r-line{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+      .r-label{font-size:13px;color:var(--muted);margin-right:4px}
+      .chip{font-family:var(--mono);font-size:11.5px;padding:3px 8px;border-radius:5px;
+            background:var(--panel-2);color:var(--muted);text-transform:uppercase}
+      .chip.src{color:var(--text);border:1px solid var(--line)}
+      .arrow{color:var(--muted)}
+      .out{font-family:var(--mono);font-size:11.5px;padding:3px 9px;border-radius:5px;
+           background:var(--accent-dim);color:var(--accent);text-transform:uppercase;cursor:pointer;border:1px solid transparent}
+      .out:hover{border-color:var(--accent)}
+      .out.sel{background:var(--accent);color:#06222a}
+      .r-unknown{color:var(--warn);font-size:13.5px}
+      .r-actions{margin-top:14px;display:flex;gap:10px;align-items:center}
+      .convert{padding:9px 18px;border:0;border-radius:7px;background:var(--accent);
+               color:#06222a;font-weight:650;font-size:14px;cursor:pointer}
+      .convert:disabled{opacity:.4;cursor:not-allowed}
+      .r-note{font-size:12px;color:var(--muted)}
+
+      /* Conversion type grid */
+      .section-label{font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+                     color:var(--muted);margin:30px 0 12px;font-weight:600}
+      .legend{float:right;font-size:11px;text-transform:none;letter-spacing:0;display:flex;gap:14px}
+      .legend span{display:flex;align-items:center;gap:5px}
+      .ldot{width:8px;height:8px;border-radius:50%}
+      .ldot.live{background:var(--ok)}
+      .ldot.soon{background:transparent;border:1px solid var(--muted)}
+      .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+      .cat{background:var(--panel);border:1px solid var(--line);border-radius:9px;
+           padding:14px;cursor:pointer;transition:border-color .12s}
+      .cat:hover{border-color:#3a424e}
+      .cat.match{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+      .cat-top{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+      .cat-top .sdot{width:8px;height:8px;border-radius:50%}
+      .cat-top .sdot.live{background:var(--ok)}
+      .cat-top .sdot.soon{background:transparent;border:1px solid var(--muted)}
+      .cat-name{font-weight:600;font-size:14px}
+      .cat-fmts{font-family:var(--mono);font-size:11px;color:var(--muted);line-height:1.5;word-break:break-word}
+
+      footer{margin-top:auto;border-top:1px solid var(--line);padding:16px 20px;
+             text-align:center;color:var(--muted);font-size:12px}
+
+      @media (max-width:640px){.grid{grid-template-columns:1fr 1fr}}
+      @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <span class="brand"><span class="mark"></span> Anvil</span>
+        <span class="tag">Drop a file — we'll detect the type.</span>
+      </header>
+
+      <div class="drop" id="drop">
+        <h2>Drop a file here</h2>
+        <p>Anvil reads the file itself to figure out what it is.</p>
+        <p class="or muted">— or —</p>
+        <label class="browse">Browse files<input type="file" id="file" multiple /></label>
+      </div>
+
+      <div class="result" id="result"></div>
+
+      <div class="section-label">
+        Conversion types
+        <span class="legend">
+          <span><span class="ldot live"></span> available</span>
+          <span><span class="ldot soon"></span> planned</span>
+        </span>
+      </div>
+      <div class="grid" id="grid"></div>
+    </div>
+
+    <footer class="mono">Runs 100% locally · no upload · no account</footer>
+
+    <script>
+      // Conversion registry (mirrors FORMATS.md). status: 'live' | 'soon'
+      const CATEGORIES = [
+        { key:"image", name:"Image", status:"live",
+          inputs:["png","jpg","jpeg","webp","avif","tiff","gif","svg","heic","heif"],
+          outputs:["png","jpg","jpeg","webp","avif","tiff","gif"] },
+        { key:"audio", name:"Audio", status:"soon",
+          inputs:["mp3","wav","flac","aac","m4a","ogg","opus","wma","aiff"],
+          outputs:["mp3","wav","flac","aac","m4a","ogg","opus"] },
+        { key:"video", name:"Video", status:"soon",
+          inputs:["mp4","mkv","mov","webm","avi","flv","wmv","mpeg","mpg","m4v","3gp"],
+          outputs:["mp4","mkv","mov","webm","avi","gif","mp3"] },
+        { key:"document", name:"Documents", status:"live",
+          inputs:["md","markdown","html","htm","docx","txt"],
+          outputs:["html","md","txt","pdf","docx"] },
+        { key:"office", name:"Office", status:"live",
+          inputs:["docx","doc","odt","rtf","xlsx","xls","ods","csv","pptx","ppt","odp"],
+          outputs:["pdf","docx","odt","rtf","xlsx","ods","csv","pptx","odp"] },
+        { key:"ebook", name:"Ebooks", status:"soon",
+          inputs:["epub","mobi","azw3","azw","fb2","lit","pdb","htmlz"],
+          outputs:["epub","mobi","azw3","fb2","pdf","txt","docx"] },
+        { key:"data", name:"Data", status:"soon",
+          inputs:["json","yaml","yml","csv","tsv","xml","toml"],
+          outputs:["json","yaml","csv","tsv","xml","toml"] },
+        { key:"pdf", name:"PDF", status:"soon",
+          inputs:["pdf"],
+          outputs:["png","jpg","tiff","txt"] },
+        { key:"vector", name:"Vector", status:"soon",
+          inputs:["svg","eps","ps","ai","cdr"],
+          outputs:["svg","pdf","png","eps"] },
+        { key:"3d", name:"3D Mesh", status:"soon",
+          inputs:["stl","obj","ply","gltf","glb","3mf","fbx","dae","3ds"],
+          outputs:["stl","obj","ply","gltf","glb","3mf"] },
+      ];
+
+      const $ = (id) => document.getElementById(id);
+      const extOf = (n) => (n.split(".").pop() || "").toLowerCase();
+      const catForExt = (ext) => CATEGORIES.find((c) => c.inputs.includes(ext));
+
+      // ── Render conversion type grid ─────────────────────────────
+      function renderGrid() {
+        $("grid").innerHTML = CATEGORIES.map((c) => `
+          <div class="cat" data-key="${c.key}">
+            <div class="cat-top">
+              <span class="sdot ${c.status}"></span>
+              <span class="cat-name">${c.name}</span>
+            </div>
+            <div class="cat-fmts">${c.inputs.slice(0,6).join(" · ")}${c.inputs.length>6?" …":""}</div>
+          </div>`).join("");
+        document.querySelectorAll(".cat").forEach((el) =>
+          el.onclick = () => browseCategory(el.dataset.key));
+      }
+
+      // ── Magic-byte sniffing ─────────────────────────────────────
+      function detectMagic(b) {
+        const eq = (arr, off=0) => arr.every((v,i) => b[off+i] === v);
+        if (eq([0x89,0x50,0x4E,0x47])) return "png";
+        if (eq([0xFF,0xD8,0xFF])) return "jpg";
+        if (eq([0x47,0x49,0x46,0x38])) return "gif";
+        if (eq([0x42,0x4D])) return "bmp";
+        if (eq([0x49,0x49,0x2A,0x00]) || eq([0x4D,0x4D,0x00,0x2A])) return "tiff";
+        if (eq([0x25,0x50,0x44,0x46])) return "pdf";
+        if (eq([0x4F,0x67,0x67,0x53])) return "ogg";
+        if (eq([0x66,0x4C,0x61,0x43])) return "flac";
+        if (eq([0x49,0x44,0x33]) || (b[0]===0xFF && (b[1]&0xE0)===0xE0)) return "mp3";
+        if (eq([0x67,0x6C,0x54,0x46])) return "glb";
+        if (eq([0x52,0x49,0x46,0x46])) {
+          const t = String.fromCharCode(b[8],b[9],b[10],b[11]);
+          if (t==="WEBP") return "webp";
+          if (t==="WAVE") return "wav";
+          if (t==="AVI ") return "avi";
+        }
+        if (eq([0x66,0x74,0x79,0x70],4)) return "mp4"; // ...ftyp
+        if (eq([0x50,0x4B,0x03,0x04])) return "zip";   // office/epub/3mf — use extension
+        return null;
+      }
+
+      // Reconcile magic result with extension.
+      function reconcile(magic, ext) {
+        if (!magic) return { ext, how: "extension" };
+        if (magic === "zip" || magic === "mp4") {
+          // container is ambiguous; trust extension if it's a known member
+          if (ext && catForExt(ext)) return { ext, how: "extension" };
+          return { ext: magic === "zip" ? "zip" : "mp4", how: "signature" };
+        }
+        if (magic === "jpg" && ext === "jpeg") return { ext: "jpeg", how: "signature" };
+        return { ext: magic, how: "signature" };
+      }
+
+      async function detect(file) {
+        const buf = new Uint8Array(await file.slice(0, 32).arrayBuffer());
+        const magic = detectMagic(buf);
+        return reconcile(magic, extOf(file.name));
+      }
+
+      // ── Handle dropped / picked files ──────────────────────────
+      let selected = { toExt: null, cat: null, file: null, fromExt: null };
+
+      async function handleFiles(files) {
+        if (!files || !files.length) return;
+        const file = files[0]; // super-simple: detect the first file
+        const { ext, how } = await detect(file);
+        const cat = catForExt(ext);
+        highlightCat(cat ? cat.key : null);
+        renderResult(file, ext, how, cat);
+      }
+
+      function renderResult(file, ext, how, cat) {
+        const r = $("result");
+        r.classList.add("show");
+        selected = { toExt: null, cat, file, fromExt: ext };
+
+        if (!cat) {
+          r.innerHTML = `
+            <div class="r-file"><span class="led warn"></span>
+              <span class="r-name">${file.name}</span>
+              <span class="r-detected">${ext ? ext.toUpperCase() : "unknown"} · ${how}</span></div>
+            <div class="r-body"><span class="r-unknown">
+              No converter recognises “${ext || "this file"}” yet. It'll appear here once a matching tool is added.
+            </span></div>`;
+          return;
+        }
+
+        const outs = cat.outputs.filter((o) => o !== ext);
+        r.innerHTML = `
+          <div class="r-file"><span class="led"></span>
+            <span class="r-name">${file.name}</span>
+            <span class="r-detected">detected by ${how}</span></div>
+          <div class="r-body">
+            <div class="r-line">
+              <span class="r-label">Detected</span>
+              <span class="chip src">${ext}</span>
+              <span class="r-label" style="margin-left:8px">${cat.name}${cat.status==="soon"?" · planned":""}</span>
+            </div>
+            <div class="r-line" style="margin-top:12px">
+              <span class="r-label">Convert to</span>
+              <span class="chip src">${ext}</span><span class="arrow">&rarr;</span>
+              ${outs.map((o) => `<span class="out" data-out="${o}">${o}</span>`).join("")}
+            </div>
+            <div class="r-actions">
+              <button class="convert" id="go" disabled>Convert</button>
+              <span class="r-note" id="note">Pick an output format.</span>
+            </div>
+          </div>`;
+
+        r.querySelectorAll(".out").forEach((el) =>
+          el.onclick = () => {
+            r.querySelectorAll(".out").forEach((x) => x.classList.remove("sel"));
+            el.classList.add("sel");
+            selected.toExt = el.dataset.out;
+            $("go").disabled = false;
+            $("note").textContent = cat.status === "soon"
+              ? `${cat.name} tool isn't built yet — this is where it'll run.`
+              : `Ready: ${ext} → ${selected.toExt}`;
+          });
+        $("go").onclick = () => onConvert(selected);
+      }
+
+      // Browse a category card (no file yet): show its formats.
+      function browseCategory(key) {
+        const cat = CATEGORIES.find((c) => c.key === key);
+        highlightCat(key);
+        const r = $("result");
+        r.classList.add("show");
+        r.innerHTML = `
+          <div class="r-file"><span class="led"></span>
+            <span class="r-name">${cat.name} conversions</span>
+            <span class="r-detected">${cat.status === "live" ? "available" : "planned"}</span></div>
+          <div class="r-body">
+            <div class="r-line"><span class="r-label">Accepts</span>
+              ${cat.inputs.map((f) => `<span class="chip">${f}</span>`).join("")}</div>
+            <div class="r-line" style="margin-top:10px"><span class="r-label">Outputs</span>
+              ${cat.outputs.map((f) => `<span class="chip out" style="cursor:default">${f}</span>`).join("")}</div>
+            <div class="r-note" style="margin-top:12px">Drop a matching file to start.</div>
+          </div>`;
+      }
+
+      function highlightCat(key) {
+        document.querySelectorAll(".cat").forEach((el) =>
+          el.classList.toggle("match", el.dataset.key === key));
+      }
+
+      // Integration hook — in the Electron app this routes to the real converter.
+      function onConvert({ file, fromExt, toExt, cat }) {
+        // window.api.convert({ toolId: cat.key, files:[<path>], outputFormat: toExt, ... })
+        $("note").textContent = `→ handing ${file.name} (${fromExt} → ${toExt}) to the ${cat.name} tool…`;
+      }
+
+      // ── Wire up drop zone ──────────────────────────────────────
+      const drop = $("drop");
+      ["dragenter","dragover"].forEach((e) =>
+        drop.addEventListener(e, (ev) => { ev.preventDefault(); drop.classList.add("hot"); }));
+      ["dragleave","drop"].forEach((e) =>
+        drop.addEventListener(e, (ev) => { ev.preventDefault(); drop.classList.remove("hot"); }));
+      drop.addEventListener("drop", (ev) => handleFiles(ev.dataTransfer.files));
+      $("file").addEventListener("change", (ev) => handleFiles(ev.target.files));
+
+      renderGrid();
+    </script>
+  </body>
+</html>
