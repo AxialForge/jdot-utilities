@@ -1,9 +1,10 @@
 const { app, BrowserWindow, ipcMain, dialog, shell } = require("electron");
 const path = require("node:path");
 const fs = require("node:fs");
-const { loadTools, describe } = require("./registry");
+const { loadTools, describe, kindOf } = require("./registry");
 const { runBatch } = require("./convert");
-const { mergePdfs, pageCount, inspect: inspectPdf } = require("./pdfops");
+const { runCollect, runExplode } = require("./ops");
+const { pageCount, inspect: inspectPdf } = require("./pdfops");
 const { listFiles } = require("./fsutil");
 const { locateSoffice } = require("./office");
 const pdfrender = require("./pdfrender");
@@ -154,40 +155,58 @@ ipcMain.handle("convert:cancel", (_e, jobId) => {
   return { cancelled: true };
 });
 
-// ── PDF operations ────────────────────────────────────────────
-ipcMain.handle("pdf:pageCount", (_e, p) => pageCount(p));
+// ── collect / explode utilities ───────────────────────────────
+// One channel for both single-shot kinds. Adding a PDF utility is a file in
+// src/tools/ — no new IPC, no new tab.
 
-// Page count plus a reason if the file can't be merged (encrypted, corrupt, …).
-ipcMain.handle("pdf:inspect", (_e, p) => inspectPdf(p));
+ipcMain.handle("util:run", async (event, payload) => {
+  const { toolId, files, options, outputDir } = payload;
+  const tool = tools.get(toolId);
+  if (!tool) return { ok: false, error: `Unknown tool: ${toolId}` };
 
-ipcMain.handle("pdf:merge", async (event, { files, defaultName }) => {
-  const save = await dialog.showSaveDialog(mainWindow, {
-    defaultPath: defaultName || "merged.pdf",
-    filters: [{ name: "PDF", extensions: ["pdf"] }],
-  });
-  if (save.canceled) return { canceled: true };
-
-  // Refuse to write the output over one of the inputs — pdf-lib has already read
-  // them, but the user would still lose a source file.
-  const target = path.resolve(save.filePath).toLowerCase();
-  if (files.some((f) => path.resolve(f).toLowerCase() === target)) {
-    return { ok: false, error: "Choose an output file that isn't one of the inputs." };
-  }
-
+  const kind = kindOf(tool);
   const controller = new AbortController();
   const jobId = nextJobId++;
   jobs.set(jobId, controller);
+  const onProgress = (p) => event.sender.send("util:progress", { ...p, jobId });
+  event.sender.send("convert:started", { jobId, total: files?.length || 1 });
+
   try {
-    const res = await mergePdfs(
-      files,
-      save.filePath,
-      (frac) => event.sender.send("pdf:progress", frac),
-      { signal: controller.signal }
-    );
-    return { ok: true, jobId, ...res };
-  } catch (err) {
-    return { ok: false, error: err.message };
+    if (kind === "collect") {
+      const ext = (tool.outputFormats[0] || "out").toLowerCase();
+      const save = await dialog.showSaveDialog(mainWindow, {
+        defaultPath: `${tool.defaultName || tool.id}.${ext}`,
+        filters: [{ name: ext.toUpperCase(), extensions: [ext] }],
+      });
+      if (save.canceled) return { ok: false, canceled: true };
+      return await runCollect({
+        tool, files, outputPath: save.filePath, options, signal: controller.signal, onProgress,
+      });
+    }
+
+    if (kind === "explode") {
+      let dir = outputDir || settings.readSync().defaultOutputDir;
+      if (!dir) {
+        const pick = await dialog.showOpenDialog(mainWindow, {
+          title: "Where should the output go?",
+          properties: ["openDirectory", "createDirectory"],
+        });
+        if (pick.canceled) return { ok: false, canceled: true };
+        dir = pick.filePaths[0];
+      }
+      return await runExplode({
+        tool, file: files?.[0], outputDir: dir, options, signal: controller.signal, onProgress,
+      });
+    }
+
+    return { ok: false, error: `"${toolId}" is a ${kind} tool — use convert:run.` };
   } finally {
     jobs.delete(jobId);
   }
 });
+
+// ── PDF helpers used by the file lists ────────────────────────
+ipcMain.handle("pdf:pageCount", (_e, p) => pageCount(p));
+
+// Page count plus a reason if the file can't be used (encrypted, corrupt, …).
+ipcMain.handle("pdf:inspect", (_e, p) => inspectPdf(p));

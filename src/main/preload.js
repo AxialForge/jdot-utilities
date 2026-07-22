@@ -32,14 +32,16 @@ contextBridge.exposeInMainWorld("api", {
     return () => ipcRenderer.removeListener("convert:fileDone", h);
   },
 
+  // collect / explode utilities (merge, split, …) — one channel for both.
+  runUtil: (payload) => ipcRenderer.invoke("util:run", payload),
+  onUtilProgress: (cb) => {
+    const h = (_e, d) => cb(d);
+    ipcRenderer.on("util:progress", h);
+    return () => ipcRenderer.removeListener("util:progress", h);
+  },
+
   pdfPageCount: (p) => ipcRenderer.invoke("pdf:pageCount", p),
   pdfInspect: (p) => ipcRenderer.invoke("pdf:inspect", p),
-  mergePdf: (payload) => ipcRenderer.invoke("pdf:merge", payload),
-  onPdfProgress: (cb) => {
-    const h = (_e, d) => cb(d);
-    ipcRenderer.on("pdf:progress", h);
-    return () => ipcRenderer.removeListener("pdf:progress", h);
-  },
 
   pathForFile: (file) => {
     try { return webUtils.getPathForFile(file); } catch { return null; }

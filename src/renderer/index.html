@@ -132,8 +132,7 @@
     <div class="topbar">
       <span class="brand"><span class="mark"></span> <span id="appName">JDot Utilities</span></span>
       <div class="tabs">
-        <button class="tab active" data-tab="convert">Convert</button>
-        <button class="tab" data-tab="merge">Merge PDF</button>
+        <button class="tab active" data-tab="convert">Utilities</button>
         <button class="tab" data-tab="settings">Settings</button>
       </div>
       <span class="spacer"></span>
@@ -162,28 +161,13 @@
         </div>
         <aside class="controls">
           <div class="ctl-head">Output</div>
-          <label class="field"><span class="field-label">Format</span><select id="formatSelect" class="mono"></select></label>
+          <label class="field" id="formatField"><span class="field-label">Format</span><select id="formatSelect" class="mono"></select></label>
           <div id="optionFields"></div>
           <p class="saveline" id="saveLine"></p>
           <button class="btn primary block" id="convertBtn" disabled>Convert</button>
           <button class="btn block" id="cancelBtn" hidden>Cancel</button>
+          <p class="saveline" id="runNote"></p>
         </aside>
-      </section>
-
-      <section data-view="merge" hidden>
-        <div class="pane">
-          <h1>Merge PDF</h1>
-          <p class="desc">Combine multiple PDFs into one. Reorder with the arrows.</p>
-          <div style="display:flex; gap:8px; margin-bottom:14px;">
-            <button class="btn small" id="addPdfs">Add PDFs</button>
-            <button class="btn small" id="clearPdfs">Clear</button>
-          </div>
-          <div id="pdfList"></div>
-          <div class="merge-actions">
-            <button class="btn primary" id="mergeBtn" disabled>Merge into one PDF</button>
-            <span class="muted" id="mergeNote"></span>
-          </div>
-        </div>
       </section>
 
       <section data-view="settings" hidden>
@@ -251,7 +235,6 @@
 
     <footer id="status">Ready</footer>
     <input type="file" id="fileInput" multiple hidden />
-    <input type="file" id="pdfInput" accept="application/pdf,.pdf" multiple hidden />
 
     <script>
       const api = window.api || null;
@@ -260,7 +243,12 @@
       const base = (p) => p.split(/[\\/]/).pop();
       const extOf = (n) => (n.split(".").pop() || "").toLowerCase();
 
+      // Mirrors the real descriptors so Preview mode (opened in a plain browser,
+      // no window.api) behaves like the app. Keep `kind` in sync with src/tools/.
       const FALLBACK_TOOLS = [
+        { id:"pdf-merge", name:"Merge PDFs", kind:"collect", category:"PDF",
+          description:"Combine several PDFs into a single document. Drag to reorder before merging.",
+          inputFormats:["pdf"], outputFormats:["pdf"], ordered:true, minInputs:2, defaultName:"merged", options:[] },
         { id:"image-convert", name:"Image Converter", category:"Image", description:"Convert between image formats (incl. WebP, AVIF, HEIC), with optional resize and quality.",
           inputFormats:["png","jpg","jpeg","webp","avif","tiff","gif","svg","heic","heif"], outputFormats:["png","jpg","jpeg","webp","avif","tiff","gif"],
           options:[{key:"maxWidth",label:"Max width (px, 0 = keep original)",type:"number",min:0,max:40000,default:0},
@@ -297,11 +285,31 @@
           byCat[cat].forEach((t)=>{ const b=document.createElement("button"); b.className="tool-btn"; b.textContent=t.name; b.dataset.id=t.id; b.onclick=()=>selectTool(t.id); list.appendChild(b); });
         });
       }
+      const kindOf = (t)=> (t && t.kind) || "convert";
+      const isConvert = ()=> kindOf(C.active)==="convert";
+      const isCollect = ()=> kindOf(C.active)==="collect";
+      const isExplode = ()=> kindOf(C.active)==="explode";
+
       function selectTool(id){
-        C.active = C.tools.find((t)=>t.id===id);
+        const next = C.tools.find((t)=>t.id===id);
+        if(!next) return;
+        // Switching utilities clears the queue — a PDF list for Merge is not a
+        // sensible input list for the Image Converter.
+        if(C.active && C.active.id!==id){ C.jobs=[]; C.done=0; C.result=null; }
+        C.active = next;
         document.querySelectorAll(".tool-btn").forEach((b)=> b.classList.toggle("active", b.dataset.id===id));
         $("toolName").textContent = C.active.name; $("toolDesc").textContent = C.active.description || "";
         $("accept").textContent = "Accepts: " + C.active.inputFormats.join(", ");
+        $("runNote").textContent = "";
+
+        // A converter picks its target format; collect/explode have a fixed one.
+        $("formatField").hidden = !isConvert();
+        $("addFolder").hidden = isExplode();
+        $("drop").querySelector("div").textContent =
+          isExplode() ? "Drop one file here" : "Drop files here";
+        $("convertBtn").textContent =
+          isCollect() ? C.active.name : isExplode() ? "Run" : "Convert";
+
         refreshFormats();
         renderOptions(C.active.options||[]); renderQueue(); updateConvert();
       }
@@ -345,6 +353,8 @@
       // a sensible target for that type.
       function accepts(ext){
         if(!C.active || !C.active.inputFormats.includes(ext)) return false;
+        // collect/explode have one fixed output format, so there is no pair to check.
+        if(!isConvert()) return true;
         return pairAllowed(ext, $("formatSelect").value);
       }
 
@@ -366,23 +376,76 @@
         if(list.includes(want)) fmt.value = want;
       }
 
-      function addPaths(paths){
-        paths.forEach((p)=>{ if(!C.jobs.some((j)=>j.path===p)) C.jobs.push({ path:p, name:base(p), ext:extOf(p) }); });
+      async function addPaths(paths){
+        for(const p of paths){
+          if(C.jobs.some((j)=>j.path===p)) continue;
+          // explode takes exactly one file — a second drop replaces the first.
+          if(isExplode()) C.jobs = [];
+          C.jobs.push({ path:p, name:base(p), ext:extOf(p) });
+        }
         if(!C.active && C.jobs.length){ const hit=C.tools.find((t)=>t.inputFormats.includes(C.jobs[0].ext)); if(hit) selectTool(hit.id); }
-        C.done=0; refreshFormats(); renderQueue(); updateConvert();
+        C.done=0; C.result=null; refreshFormats(); renderQueue(); updateConvert();
+        await annotatePdfs();
       }
+
+      // For PDF utilities, show page counts and flag files that can't be read
+      // (encrypted, corrupt) before the user commits to a run.
+      async function annotatePdfs(){
+        if(!hasApi || !C.active || !C.active.inputFormats.includes("pdf")) return;
+        let changed=false;
+        for(const j of C.jobs){
+          if(j.ext!=="pdf" || j.info) continue;
+          j.info = await api.pdfInspect(j.path); changed=true;
+        }
+        if(changed){ renderQueue(); updateConvert(); }
+      }
+
       function renderQueue(){
         const q=$("queue"); const outFmt=$("formatSelect").value||"?";
-        q.innerHTML = C.jobs.map((job,i)=>{ const ok=accepts(job.ext); return `
+        const ordered = isCollect() && C.active?.ordered;
+        const last = C.jobs.length-1;
+
+        q.innerHTML = C.jobs.map((job,i)=>{
+          const bad = job.info?.error;
+          const ok = accepts(job.ext) && !bad;
+          const detail = bad ? `<span class="chip" style="color:var(--err)">${bad}</span>`
+            : job.info?.pages!=null ? `<span class="chip">${job.info.pages} pages</span>`
+            : `<span class="chip">${job.ext||"?"}</span><span class="arrow">&rarr;</span><span class="chip out">${ok?(isConvert()?outFmt:C.active.outputFormats[0]):"—"}</span>`;
+          const mv = ordered
+            ? `<button class="job-x" data-up="${i}" ${i===0?"disabled":""}>&uarr;</button><button class="job-x" data-dn="${i}" ${i===last?"disabled":""}>&darr;</button>`
+            : "";
+          return `
           <div class="job" data-i="${i}"><span class="led"></span>
+            ${ordered?`<span class="chip">${i+1}</span>`:""}
             <span class="job-name ${ok?"":"reject"}" title="${job.path}">${job.name}</span>
-            <span class="flow"><span class="chip">${job.ext||"?"}</span><span class="arrow">&rarr;</span><span class="chip out">${ok?outFmt:"—"}</span></span>
-            <button class="job-x" data-rm="${i}">&times;</button></div>`; }).join("");
-        q.querySelectorAll("[data-rm]").forEach((b)=> b.onclick=()=>{ C.jobs.splice(+b.dataset.rm,1); refreshFormats(); renderQueue(); updateConvert(); });
+            <span class="flow">${detail}</span>
+            ${mv}<button class="job-x" data-rm="${i}">&times;</button></div>`;
+        }).join("");
+
+        const redraw = ()=>{ refreshFormats(); renderQueue(); updateConvert(); };
+        q.querySelectorAll("[data-rm]").forEach((b)=> b.onclick=()=>{ C.jobs.splice(+b.dataset.rm,1); redraw(); });
+        q.querySelectorAll("[data-up]").forEach((b)=> b.onclick=()=> moveJob(+b.dataset.up,-1));
+        q.querySelectorAll("[data-dn]").forEach((b)=> b.onclick=()=> moveJob(+b.dataset.dn, 1));
         updateSummary();
       }
-      function eligible(){ return C.jobs.map((j,i)=>({j,i})).filter(({j})=>accepts(j.ext)); }
-      function updateConvert(){ $("convertBtn").disabled = !C.active || eligible().length===0; }
+      function moveJob(i,d){
+        const j=i+d; if(j<0||j>=C.jobs.length) return;
+        [C.jobs[i],C.jobs[j]]=[C.jobs[j],C.jobs[i]];
+        renderQueue();
+      }
+
+      function eligible(){
+        return C.jobs.map((j,i)=>({j,i})).filter(({j})=> accepts(j.ext) && !j.info?.error);
+      }
+      function updateConvert(){
+        const n = eligible().length;
+        const min = C.active ? (C.active.minInputs ?? (isCollect()?2:1)) : 1;
+        const blocked = isCollect() && C.jobs.some((j)=>j.info?.error);
+        $("convertBtn").disabled = !C.active || n < min || blocked;
+        if(blocked) $("runNote").textContent = "Remove the unreadable files to continue.";
+        else if(isCollect() && n && n<min) $("runNote").textContent = `Add at least ${min} files.`;
+        else if(!C.result) $("runNote").textContent = "";
+      }
       function updateSummary(){
         const total=C.jobs.length, ok=eligible().length, skip=total-ok;
         $("sumText").textContent = total===0 ? "No files yet." : `${total} file${total>1?"s":""} · ${ok} ready${skip?` · ${skip} skipped`:""}`;
@@ -398,7 +461,7 @@
       async function addFilesAction(){ if(hasApi) addPaths(await api.pickFiles()); else $("fileInput").click(); }
       async function addFolderAction(){ if(hasApi) addPaths(await api.addFolderFiles()); else setStatus("Folder import runs in the installed app."); }
       $("addFiles").onclick=addFilesAction; $("addFolder").onclick=addFolderAction;
-      $("clearFiles").onclick=()=>{ C.jobs=[]; C.done=0; renderQueue(); updateConvert(); };
+      $("clearFiles").onclick=()=>{ C.jobs=[]; C.done=0; C.result=null; $("runNote").textContent=""; $("barFill").style.width="0%"; renderQueue(); updateConvert(); };
       $("fileInput").onchange=(e)=> addPaths([...e.target.files].map((f)=>f.name));
       $("formatSelect").onchange=renderQueue;
 
@@ -407,25 +470,70 @@
       ["dragleave","drop"].forEach((e)=> drop.addEventListener(e,(ev)=>{ ev.preventDefault(); drop.classList.remove("hot"); }));
       drop.addEventListener("drop",(ev)=>{ const paths=[]; for(const f of ev.dataTransfer.files){ const p=hasApi?api.pathForFile(f):f.name; if(p) paths.push(p); } addPaths(paths); });
 
-      async function runConvert(){
+      // One entry point for all three kinds; the descriptor decides the shape.
+      async function runActive(){
         const elig=eligible(); if(!C.active||!elig.length) return;
-        $("convertBtn").disabled=true; C.done=0; updateSummary();
+        $("convertBtn").disabled=true; C.done=0; C.result=null; updateSummary();
         elig.forEach(({i})=>{ const led=document.querySelector(`.job[data-i="${i}"] .led`); if(led) led.className="led busy"; });
-        setStatus(`Converting ${elig.length} file(s)…`);
-        if(!hasApi){ for(const {i} of elig){ await new Promise((r)=>setTimeout(r,120)); const led=document.querySelector(`.job[data-i="${i}"] .led`); if(led) led.className="led ok"; C.done++; updateSummary(); } setStatus("Preview — real conversion runs in the installed app."); updateConvert(); return; }
-        // The main process maps queue positions to *its* file list, which is the
-        // eligible subset — keep a lookup so progress lands on the right row.
-        C.rowFor = elig.map(({i})=>i);
+
+        if(!hasApi){
+          for(const {i} of elig){ await new Promise((r)=>setTimeout(r,120)); const led=document.querySelector(`.job[data-i="${i}"] .led`); if(led) led.className="led ok"; C.done++; updateSummary(); }
+          setStatus("Preview — this runs for real in the installed app."); updateConvert(); return;
+        }
+
         $("cancelBtn").hidden=false; $("cancelBtn").disabled=false;
-        const { results, error, cancelled } = await api.convert({ toolId:C.active.id, files:elig.map(({j})=>j.path), outputFormat:$("formatSelect").value, options:collectOptions(), outputDir:SETTINGS.defaultOutputDir });
-        $("cancelBtn").hidden=true; C.jobId=null;
-        if(error){ setStatus("Error: "+error); updateConvert(); return; }
+        try {
+          if(isConvert()) await runConvertKind(elig);
+          else await runSingleShot(elig);
+        } finally {
+          $("cancelBtn").hidden=true; C.jobId=null; updateConvert();
+        }
+      }
+
+      async function runConvertKind(elig){
+        setStatus(`Converting ${elig.length} file(s)…`);
+        // The main process indexes its own file list, which is the eligible subset —
+        // keep a lookup so progress lands on the right queue row.
+        C.rowFor = elig.map(({i})=>i);
+        const { results, error, cancelled } = await api.convert({
+          toolId:C.active.id, files:elig.map(({j})=>j.path),
+          outputFormat:$("formatSelect").value, options:collectOptions(),
+          outputDir:SETTINGS.defaultOutputDir,
+        });
+        if(error){ setStatus("Error: "+error); return; }
         const okc=results.filter((r)=>r.ok).length;
         const cx=results.filter((r)=>r.cancelled).length;
         setStatus(cancelled||cx ? `Cancelled — ${okc} converted, ${cx} skipped` : `Done — ${okc}/${results.length} converted`);
-        updateConvert();
       }
-      $("convertBtn").onclick=runConvert;
+
+      async function runSingleShot(elig){
+        setStatus(`${C.active.name}…`);
+        const res = await api.runUtil({
+          toolId:C.active.id, files:elig.map(({j})=>j.path),
+          options:collectOptions(), outputDir:SETTINGS.defaultOutputDir,
+        });
+        const leds=[...document.querySelectorAll(".job .led")];
+        if(res.canceled){ setStatus("Cancelled."); leds.forEach((l)=>l.className="led"); return; }
+
+        C.result = res;
+        if(res.ok){
+          leds.forEach((l)=>l.className="led ok");
+          const n = res.outputs?.length || 1;
+          let msg = isCollect()
+            ? `Merged ${res.sources?.length ?? elig.length} files → ${res.pages ?? n} pages.`
+            : `Wrote ${n} file${n>1?"s":""}.`;
+          setStatus(msg);
+          // Say so when the operation changed the document rather than losing it quietly.
+          $("runNote").innerHTML = (res.warnings?.length ? res.warnings.join(" ") + " " : "")
+            + `<a id="revealOut">Show in folder</a>`;
+          const a=$("revealOut"); if(a) a.onclick=()=> api.reveal(res.outputs?.[0] || res.outputPath);
+        } else {
+          leds.forEach((l)=>l.className="led err");
+          setStatus("Error: "+res.error);
+          $("runNote").textContent = res.error;
+        }
+      }
+      $("convertBtn").onclick=runActive;
       $("cancelBtn").onclick=async()=>{ $("cancelBtn").disabled=true; setStatus("Cancelling…"); if(hasApi) await api.cancelConvert(C.jobId); };
       if(hasApi){
         api.onStarted((d)=>{ C.jobId=d.jobId; });
@@ -435,54 +543,9 @@
           if(led) led.className="led "+(r.ok?"ok":(r.cancelled?"":"err"));
           C.done++; updateSummary();
         });
+        // collect/explode report one overall fraction rather than per-file.
+        api.onUtilProgress((d)=>{ if(d.fraction!=null){ $("barFill").style.width = Math.round(d.fraction*100)+"%"; } });
       }
-
-      const M = { pdfs:[] };
-      function renderPdfs(){
-        const l=$("pdfList");
-        l.innerHTML = M.pdfs.map((p,i)=>`
-          <div class="pdf-row"><span class="idx">${i+1}</span>
-            <div><div class="pdf-name" title="${p.path}">${p.name}</div><div class="pdf-pages"${p.error?' style="color:var(--err)"':""}>${p.error ? p.error : (p.pages!=null?p.pages+" pages":"")}</div></div>
-            <div class="mv"><button data-up="${i}" ${i===0?"disabled":""}>&uarr;</button><button data-dn="${i}" ${i===M.pdfs.length-1?"disabled":""}>&darr;</button></div>
-            <button class="rm" data-rm="${i}">&times;</button></div>`).join("");
-        l.querySelectorAll("[data-up]").forEach((b)=> b.onclick=()=>move(+b.dataset.up,-1));
-        l.querySelectorAll("[data-dn]").forEach((b)=> b.onclick=()=>move(+b.dataset.dn,1));
-        l.querySelectorAll("[data-rm]").forEach((b)=> b.onclick=()=>{ M.pdfs.splice(+b.dataset.rm,1); renderPdfs(); });
-        // A file that can't be read (encrypted, corrupt) must not be merged.
-        const usable = M.pdfs.filter((p)=>!p.error).length;
-        $("mergeBtn").disabled = usable<2 || M.pdfs.some((p)=>p.error);
-        const bad = M.pdfs.filter((p)=>p.error).length;
-        if(bad) $("mergeNote").textContent = `Remove ${bad} unreadable file${bad>1?"s":""} to continue.`;
-      }
-      function move(i,d){ const j=i+d; if(j<0||j>=M.pdfs.length) return; [M.pdfs[i],M.pdfs[j]]=[M.pdfs[j],M.pdfs[i]]; renderPdfs(); }
-      async function addPdfs(paths){
-        for(const p of paths){
-          if(extOf(p)!=="pdf") continue;
-          if(M.pdfs.some((x)=>x.path===p)) continue;
-          // inspect() gives a page count *and* a reason when the file is unusable,
-          // so an encrypted PDF is reported up front instead of failing the merge.
-          const info = hasApi ? await api.pdfInspect(p) : { pages:null, error:null };
-          M.pdfs.push({ path:p, name:base(p), pages:info.pages, error:info.error });
-        }
-        renderPdfs();
-      }
-      $("addPdfs").onclick=async()=>{ if(hasApi){ const f=await api.pickFiles(); addPdfs(f.filter((p)=>extOf(p)==="pdf")); } else $("pdfInput").click(); };
-      $("pdfInput").onchange=(e)=> addPdfs([...e.target.files].map((f)=>f.name));
-      $("clearPdfs").onclick=()=>{ M.pdfs=[]; renderPdfs(); };
-      $("mergeBtn").onclick=async()=>{
-        if(!hasApi){ $("mergeNote").textContent="Preview — merging runs in the installed app."; return; }
-        $("mergeBtn").disabled=true; $("mergeNote").textContent="Merging…";
-        const res=await api.mergePdf({ files:M.pdfs.map((p)=>p.path), defaultName:"merged.pdf" });
-        if(res.canceled) $("mergeNote").textContent="Cancelled.";
-        else if(res.ok){
-          let msg = `Merged ${res.sources.length} files → ${res.pages} pages.`;
-          // Say so when the merge changed the document, rather than losing it quietly.
-          if(res.warnings?.length) msg += "  " + res.warnings.join("  ");
-          $("mergeNote").textContent = msg;
-        }
-        else $("mergeNote").textContent="Error: "+res.error;
-        renderPdfs();
-      };
 
       function paintSettings(){
         document.querySelectorAll("#themeSeg button").forEach((b)=> b.classList.toggle("on", b.dataset.themeVal===SETTINGS.theme));
@@ -514,8 +577,10 @@
       (async ()=>{
         if(hasApi){ const info=await api.info(); $("appName").textContent=info.name; document.title=info.name; $("ver").textContent="v"+info.version; SETTINGS=await api.getSettings(); C.tools=await api.listTools(); }
         else { $("previewBadge").hidden=false; $("ver").textContent="preview"; C.tools=FALLBACK_TOOLS; }
-        applyTheme(SETTINGS.theme); renderRail(); paintSettings(); refreshOffice(); renderPdfs(); setSaveLine(); updateSummary();
-        if(C.tools[0]) selectTool(C.tools[0].id);
+        applyTheme(SETTINGS.theme); renderRail(); paintSettings(); refreshOffice(); setSaveLine(); updateSummary();
+        // Open on the first converter, not whatever sorts first (e.g. Merge PDFs).
+        const first = C.tools.find((t)=>((t.kind||"convert")==="convert")) || C.tools[0];
+        if(first) selectTool(first.id);
       })();
     </script>
   </body>

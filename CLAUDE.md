@@ -22,13 +22,15 @@ npm run build:portable # single-file portable .exe
 npm test               # node:test suite (53 tests, plain node — no Electron)
 npm run test:pdf       # Electron-hosted PDF smoke test (5 checks)
 ```
-Two suites, because the PDF path needs Chromium:
-- `npm test` covers `htmlutil`, the `convert` orchestrator, `pdfops`, the registry,
-  and every non-PDF `document-convert` path. Runs in plain node.
-- `npm run test:pdf` runs under Electron and covers `pdfrender` (pooled offscreen
-  windows), `<base href>` asset resolution, page size/orientation, and that a
-  12-file batch doesn't leak windows. **Add a case here for anything touching PDF
-  output** — it cannot be covered by `npm test`.
+Two layers, because the PDF path needs Chromium:
+- `npm test` (~70 cases) covers `htmlutil`, `convert`, `ops`, `pdfops`, the
+  registry (incl. kinds/validation), and every non-PDF `document-convert` path.
+  Runs in plain node.
+- Electron-hosted smoke tests (run directly): `npx electron test/electron-pdf.js`
+  (PDF output, pooled windows, `<base href>`, orientation) and
+  `npx electron test/electron-ops.js` (collect/explode via the discovered tools).
+  `npm run test:pdf` runs the first. **Anything touching PDF output or Electron
+  APIs goes here** — it cannot be covered by `npm test`.
 
 ## Architecture
 - **Main process** (`src/main/`, CommonJS): Electron entry, IPC, and all the
@@ -38,8 +40,22 @@ Two suites, because the PDF path needs Chromium:
   `window.api` bridge in `preload.js`. It **degrades gracefully**: opened in a
   plain browser (no `window.api`) it runs a "Preview" mode with in-memory state —
   that's how the UI is demoed outside Electron. Keep that fallback working.
-- **Tools** (`src/tools/`): each file exports a descriptor (or an array of them).
-  The registry auto-loads every `*.js` that isn't prefixed `_`.
+- **Tools/utilities** (`src/tools/`): each file exports a descriptor (or an array
+  of them). The registry auto-loads every `*.js` that isn't prefixed `_`.
+
+### Utility kinds (the core abstraction)
+A descriptor declares a `kind` that says how files flow. This is what lets a PDF
+toolkit (merge, split, extract…) be one file each instead of hardcoded tabs:
+- **`convert`** (default) — N in → N out. Implements `convert()`. Driven by
+  `convert.js` (`runBatch`): concurrency, cancel, collision-safe naming.
+- **`collect`** — N in → 1 out (merge, images→PDF, zip). Implements `run()`.
+  `ordered:true` makes the input list reorderable. Driven by `ops.js` `runCollect`.
+- **`explode`** — 1 in → N out (split, PDF→images, unzip). Implements `run()`,
+  gets `allocate(suffix, ext)` for collision-safe output names. `ops.js` `runExplode`.
+
+All three go through **one IPC surface**: `convert:run` for converters,
+`util:run` for collect/explode. Merge PDF is `src/tools/pdf-merge.js` — an ordinary
+discovered `collect` tool, not a special case.
 
 ### Directory map
 ```
@@ -52,6 +68,7 @@ src/
     convert.js           Batch runner: concurrency, cancel (AbortSignal), collision-safe naming
     settings.js          Persists to userData/settings.json (sync read at boot)
     fsutil.js            Folder walker (top-level or recursive), Electron-free/testable
+    ops.js               Runners for collect (N->1) and explode (1->N) kinds
     htmlutil.js          HTML normalization: strip <style>/<script>, <base href>, text extraction
     pdfrender.js         HTML -> PDF via a POOL of offscreen Electron windows
     pdfops.js            PDF merge/inspect via pdf-lib (encryption-aware)
@@ -61,7 +78,8 @@ src/
     image-convert.js     sharp + heic-convert
     document-convert.js  marked/turndown/mammoth/html-to-docx + Electron printToPDF
     office-convert.js    Word/Sheets/Slides families (array export) via office.js
-  renderer/index.html    Whole UI: Convert / Merge PDF / Settings, 3 themes
+    pdf-merge.js         Merge PDFs — first "collect" tool (was a hardcoded tab)
+  renderer/index.html    Whole UI: Utilities / Settings, 3 themes, kind-aware stage
 docs/index.html          GitHub Pages landing page
 .github/workflows/build.yml  Windows CI: tag v* -> builds .exe -> attaches to release
 ```
