@@ -8,6 +8,8 @@
   "scripts": {
     "start": "electron .",
     "dev": "electron .",
+    "test": "node --test \"test/**/*.test.js\"",
+    "test:pdf": "electron test/electron-pdf.js",
     "build:win": "electron-builder --win",
     "build:portable": "electron-builder --win portable"
   },
@@ -23,5 +25,8 @@
   "devDependencies": {
     "electron": "^32.2.0",
     "electron-builder": "^25.1.8"
+  },
+  "allowScripts": {
+    "electron@32.3.3": true
   }
 }

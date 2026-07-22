@@ -18,10 +18,17 @@ npm run dev            # run the app (electron .)
 npm run build:win      # NSIS installer + portable .exe -> dist/
 npm run build:portable # single-file portable .exe
 ```
-There is **no formal test runner yet.** Logic has been validated with throwaway
-Node scripts that `require('./src/main/registry')` + `require('./src/main/convert')`
-and run a tool over a temp file. Good first improvement: add a real test runner
-(node:test or vitest) around the registry, convert orchestrator, and each tool.
+```bash
+npm test               # node:test suite (53 tests, plain node — no Electron)
+npm run test:pdf       # Electron-hosted PDF smoke test (5 checks)
+```
+Two suites, because the PDF path needs Chromium:
+- `npm test` covers `htmlutil`, the `convert` orchestrator, `pdfops`, the registry,
+  and every non-PDF `document-convert` path. Runs in plain node.
+- `npm run test:pdf` runs under Electron and covers `pdfrender` (pooled offscreen
+  windows), `<base href>` asset resolution, page size/orientation, and that a
+  12-file batch doesn't leak windows. **Add a case here for anything touching PDF
+  output** — it cannot be covered by `npm test`.
 
 ## Architecture
 - **Main process** (`src/main/`, CommonJS): Electron entry, IPC, and all the
@@ -42,10 +49,12 @@ src/
     main.js              Electron entry; boots settings + hardware accel; all IPC
     preload.js           contextBridge -> window.api
     registry.js          Auto-discovers tools (accepts a descriptor OR an array)
-    convert.js           Batch runner with concurrency limit + collision-safe naming
+    convert.js           Batch runner: concurrency, cancel (AbortSignal), collision-safe naming
     settings.js          Persists to userData/settings.json (sync read at boot)
     fsutil.js            Folder walker (top-level or recursive), Electron-free/testable
-    pdfops.js            PDF merge via pdf-lib
+    htmlutil.js          HTML normalization: strip <style>/<script>, <base href>, text extraction
+    pdfrender.js         HTML -> PDF via a POOL of offscreen Electron windows
+    pdfops.js            PDF merge/inspect via pdf-lib (encryption-aware)
     office.js            LibreOffice locator + headless convert (unique profile per call)
   tools/
     _template.js         Copy to add a tool (documents the contract + sidecar pattern)
@@ -62,10 +71,18 @@ Copy `src/tools/_template.js`, fill the descriptor, implement `convert()`, drop 
 in `src/tools/`. Restart — the registry finds it and the UI renders itself from it.
 
 Descriptor: `{ id, name, category, description, inputFormats[], outputFormats[],
-options[], async convert({ inputPath, outputPath, outputFormat, options, onProgress }) }`.
-- Every accepted input should convert to every listed output. If a family has
-  invalid pairs (e.g. Office), **split into multiple descriptors** and export an
-  **array** (see `office-convert.js`) so the UI only offers valid pairs.
+excludePairs{}, options[],
+async convert({ inputPath, outputPath, outputFormat, options, signal, onProgress }) }`.
+- The default assumption is that every input converts to every output. Two ways to
+  express exceptions:
+  - **`excludePairs: { md: ["md"] }`** — hides individual pairs from the UI. Use for
+    a few holes in an otherwise full matrix (e.g. same-format no-ops).
+  - **Split into multiple descriptors** and export an **array** (see
+    `office-convert.js`) when a family has whole groups of invalid pairs.
+- `options[]` entry types: `select` (with `choices`), `number` (`min`/`max`),
+  `boolean` (renders a checkbox), `text`.
+- `signal` is an `AbortSignal`. Long-running tools should check `signal.aborted`
+  and bail; the batch runner already refuses to start new files after a cancel.
 - `convert()` writes the output file itself and throws on failure (message shown
   to the user). Call `onProgress(0..1)` when possible.
 - Pure JS is preferred. For PDF output, render HTML via Electron
@@ -96,7 +113,19 @@ Three: **light**, **grey** (default), **black**. Driven by CSS custom properties
   **on Windows** (or the Windows CI runner) so the correct `@img/sharp-win32-x64`
   binary is fetched. Cross-building from Linux needs the win32 optional dep forced.
 - **PDF output needs Chromium** (Electron `printToPDF`) — it can't run in plain
-  `node`, so that path is only exercised inside the app.
+  `node`, so `pdfrender.js` is lazy-required and only `npm run test:pdf` covers it.
+- **Anything that turns HTML into another format must call
+  `htmlutil.stripNonContent()` first.** Turndown and tag-stripping text extraction
+  both emit `<style>`/`<script>` *contents* as body text, so skipping it dumps the
+  stylesheet and the JavaScript into the `.md`/`.txt` output. This was a real bug.
+- **HTML intermediates need `<base href>`** (`htmlutil.wrapDocument` adds it) or
+  relative `<img>`/`<link>` in the source resolve against the temp dir and vanish.
+- **`PDFDocument.load()` defaults to `updateMetadata: true`**, which rewrites
+  Producer and ModificationDate the instant a file is opened. `pdfops.loadPdf()`
+  passes `false`. Use `loadPdf()` rather than calling pdf-lib directly, or
+  in-place PDF operations will silently restamp the user's metadata.
+- **`ignoreEncryption` does not decrypt.** It only skips the check, yielding
+  garbage pages. `loadPdf()` rejects encrypted input with a clear message instead.
 - **Office needs LibreOffice installed** (not bundled — it's ~400 MB). `office.js`
   auto-detects it; `libreOfficePath` overrides. Each call uses a unique
   `-env:UserInstallation` profile so batch concurrency won't collide.

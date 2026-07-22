@@ -166,6 +166,7 @@
           <div id="optionFields"></div>
           <p class="saveline" id="saveLine"></p>
           <button class="btn primary block" id="convertBtn" disabled>Convert</button>
+          <button class="btn block" id="cancelBtn" hidden>Cancel</button>
         </aside>
       </section>
 
@@ -266,7 +267,9 @@
                    {key:"quality",label:"Quality (JPEG/WebP/AVIF)",type:"number",min:1,max:100,default:90}] },
         { id:"document-convert", name:"Document Converter", category:"Document", description:"Convert between Markdown, HTML, Word (.docx), plain text, and PDF.",
           inputFormats:["md","markdown","html","htm","docx","txt"], outputFormats:["html","md","txt","pdf","docx"],
-          options:[{key:"pageSize",label:"PDF page size",type:"select",choices:["Letter","A4","Legal","Tabloid"],default:"Letter"}] },
+          excludePairs:{ md:["md"], html:["html"], txt:["txt"], docx:["docx"] },
+          options:[{key:"pageSize",label:"PDF page size",type:"select",choices:["Letter","A4","Legal","Tabloid"],default:"Letter"},
+                   {key:"landscape",label:"PDF landscape",type:"boolean",default:false}] },
         { id:"office-word", name:"Word Documents", category:"Office", description:"Convert Word/OpenDocument text and to PDF. Requires LibreOffice.",
           inputFormats:["docx","doc","odt","rtf"], outputFormats:["pdf","docx","odt","rtf"], options:[] },
         { id:"office-sheet", name:"Spreadsheets", category:"Office", description:"Convert spreadsheets and to PDF. Requires LibreOffice.",
@@ -299,8 +302,7 @@
         document.querySelectorAll(".tool-btn").forEach((b)=> b.classList.toggle("active", b.dataset.id===id));
         $("toolName").textContent = C.active.name; $("toolDesc").textContent = C.active.description || "";
         $("accept").textContent = "Accepts: " + C.active.inputFormats.join(", ");
-        const fmt=$("formatSelect"); fmt.innerHTML="";
-        C.active.outputFormats.forEach((f)=>{ const o=document.createElement("option"); o.value=f; o.textContent=f.toUpperCase(); fmt.appendChild(o); });
+        refreshFormats();
         renderOptions(C.active.options||[]); renderQueue(); updateConvert();
       }
       function renderOptions(opts){
@@ -310,17 +312,64 @@
           const s=document.createElement("span"); s.className="field-label"; s.textContent=opt.label||opt.key; lab.appendChild(s);
           let inp;
           if (opt.type==="select"){ inp=document.createElement("select"); (opt.choices||[]).forEach((c)=>{ const o=document.createElement("option"); o.value=c; o.textContent=c; inp.appendChild(o); }); if (opt.key==="pageSize") inp.value=SETTINGS.pdfPageSize; }
+          else if (opt.type==="boolean"){ inp=document.createElement("input"); inp.type="checkbox"; inp.checked=!!opt.default; inp.style.width="auto"; inp.style.justifySelf="start"; }
           else { inp=document.createElement("input"); inp.type=opt.type==="number"?"number":"text"; if(opt.min!=null)inp.min=opt.min; if(opt.max!=null)inp.max=opt.max; if(opt.default!=null)inp.value=opt.default; }
           inp.dataset.key=opt.key; inp.dataset.type=opt.type||"text"; lab.appendChild(inp); w.appendChild(lab);
         });
       }
-      function collectOptions(){ const out={}; document.querySelectorAll("#optionFields [data-key]").forEach((el)=>{ out[el.dataset.key]= el.dataset.type==="number"?Number(el.value):el.value; }); return out; }
-      const accepts = (ext)=> C.active ? C.active.inputFormats.includes(ext) : false;
+      function collectOptions(){
+        const out={};
+        document.querySelectorAll("#optionFields [data-key]").forEach((el)=>{
+          if(el.dataset.type==="boolean") out[el.dataset.key]=el.checked;
+          else if(el.dataset.type==="number") out[el.dataset.key]=Number(el.value);
+          else out[el.dataset.key]=el.value;
+        });
+        return out;
+      }
+
+      // Normalize an extension to its canonical format, matching the main-process
+      // `norm()` in document-convert.js, so excludePairs keys line up.
+      const NORM = { markdown:"md", md:"md", htm:"html", html:"html" };
+      const normFmt = (e)=> NORM[e] || e;
+
+      // A tool may declare pairs that must never be offered (same-format
+      // "conversions" that would round-trip the file through a lossy intermediate).
+      function pairAllowed(inExt, outFmt){
+        if(!C.active || !outFmt) return true;
+        const ex = C.active.excludePairs || {};
+        const banned = ex[normFmt(inExt)] || ex[inExt] || [];
+        return !banned.includes(normFmt(outFmt)) && !banned.includes(outFmt);
+      }
+
+      // A file is convertible if the tool takes its type AND the chosen output is
+      // a sensible target for that type.
+      function accepts(ext){
+        if(!C.active || !C.active.inputFormats.includes(ext)) return false;
+        return pairAllowed(ext, $("formatSelect").value);
+      }
+
+      // Outputs worth showing: those valid for at least one queued file. With an
+      // empty queue, show everything.
+      function offerableOutputs(){
+        const all = C.active ? C.active.outputFormats : [];
+        const exts = [...new Set(C.jobs.map((j)=>j.ext).filter((e)=> C.active?.inputFormats.includes(e)))];
+        if(!exts.length) return all;
+        return all.filter((f)=> exts.some((e)=> pairAllowed(e, f)));
+      }
+
+      function refreshFormats(){
+        const fmt=$("formatSelect"); if(!C.active) return;
+        const want = fmt.value;
+        const list = offerableOutputs();
+        fmt.innerHTML="";
+        list.forEach((f)=>{ const o=document.createElement("option"); o.value=f; o.textContent=f.toUpperCase(); fmt.appendChild(o); });
+        if(list.includes(want)) fmt.value = want;
+      }
 
       function addPaths(paths){
         paths.forEach((p)=>{ if(!C.jobs.some((j)=>j.path===p)) C.jobs.push({ path:p, name:base(p), ext:extOf(p) }); });
         if(!C.active && C.jobs.length){ const hit=C.tools.find((t)=>t.inputFormats.includes(C.jobs[0].ext)); if(hit) selectTool(hit.id); }
-        C.done=0; renderQueue(); updateConvert();
+        C.done=0; refreshFormats(); renderQueue(); updateConvert();
       }
       function renderQueue(){
         const q=$("queue"); const outFmt=$("formatSelect").value||"?";
@@ -329,7 +378,7 @@
             <span class="job-name ${ok?"":"reject"}" title="${job.path}">${job.name}</span>
             <span class="flow"><span class="chip">${job.ext||"?"}</span><span class="arrow">&rarr;</span><span class="chip out">${ok?outFmt:"—"}</span></span>
             <button class="job-x" data-rm="${i}">&times;</button></div>`; }).join("");
-        q.querySelectorAll("[data-rm]").forEach((b)=> b.onclick=()=>{ C.jobs.splice(+b.dataset.rm,1); renderQueue(); updateConvert(); });
+        q.querySelectorAll("[data-rm]").forEach((b)=> b.onclick=()=>{ C.jobs.splice(+b.dataset.rm,1); refreshFormats(); renderQueue(); updateConvert(); });
         updateSummary();
       }
       function eligible(){ return C.jobs.map((j,i)=>({j,i})).filter(({j})=>accepts(j.ext)); }
@@ -364,28 +413,59 @@
         elig.forEach(({i})=>{ const led=document.querySelector(`.job[data-i="${i}"] .led`); if(led) led.className="led busy"; });
         setStatus(`Converting ${elig.length} file(s)…`);
         if(!hasApi){ for(const {i} of elig){ await new Promise((r)=>setTimeout(r,120)); const led=document.querySelector(`.job[data-i="${i}"] .led`); if(led) led.className="led ok"; C.done++; updateSummary(); } setStatus("Preview — real conversion runs in the installed app."); updateConvert(); return; }
-        const { results, error } = await api.convert({ toolId:C.active.id, files:elig.map(({j})=>j.path), outputFormat:$("formatSelect").value, options:collectOptions(), outputDir:SETTINGS.defaultOutputDir });
+        // The main process maps queue positions to *its* file list, which is the
+        // eligible subset — keep a lookup so progress lands on the right row.
+        C.rowFor = elig.map(({i})=>i);
+        $("cancelBtn").hidden=false; $("cancelBtn").disabled=false;
+        const { results, error, cancelled } = await api.convert({ toolId:C.active.id, files:elig.map(({j})=>j.path), outputFormat:$("formatSelect").value, options:collectOptions(), outputDir:SETTINGS.defaultOutputDir });
+        $("cancelBtn").hidden=true; C.jobId=null;
         if(error){ setStatus("Error: "+error); updateConvert(); return; }
-        const okc=results.filter((r)=>r.ok).length; setStatus(`Done — ${okc}/${results.length} converted`); updateConvert();
+        const okc=results.filter((r)=>r.ok).length;
+        const cx=results.filter((r)=>r.cancelled).length;
+        setStatus(cancelled||cx ? `Cancelled — ${okc} converted, ${cx} skipped` : `Done — ${okc}/${results.length} converted`);
+        updateConvert();
       }
       $("convertBtn").onclick=runConvert;
-      if(hasApi){ api.onFileDone((r)=>{ const led=document.querySelector(`.job[data-i="${r.index}"] .led`); if(led) led.className="led "+(r.ok?"ok":"err"); C.done++; updateSummary(); }); }
+      $("cancelBtn").onclick=async()=>{ $("cancelBtn").disabled=true; setStatus("Cancelling…"); if(hasApi) await api.cancelConvert(C.jobId); };
+      if(hasApi){
+        api.onStarted((d)=>{ C.jobId=d.jobId; });
+        api.onFileDone((r)=>{
+          const row = C.rowFor ? C.rowFor[r.index] : r.index;
+          const led=document.querySelector(`.job[data-i="${row}"] .led`);
+          if(led) led.className="led "+(r.ok?"ok":(r.cancelled?"":"err"));
+          C.done++; updateSummary();
+        });
+      }
 
       const M = { pdfs:[] };
       function renderPdfs(){
         const l=$("pdfList");
         l.innerHTML = M.pdfs.map((p,i)=>`
           <div class="pdf-row"><span class="idx">${i+1}</span>
-            <div><div class="pdf-name" title="${p.path}">${p.name}</div><div class="pdf-pages">${p.pages!=null?p.pages+" pages":""}</div></div>
+            <div><div class="pdf-name" title="${p.path}">${p.name}</div><div class="pdf-pages"${p.error?' style="color:var(--err)"':""}>${p.error ? p.error : (p.pages!=null?p.pages+" pages":"")}</div></div>
             <div class="mv"><button data-up="${i}" ${i===0?"disabled":""}>&uarr;</button><button data-dn="${i}" ${i===M.pdfs.length-1?"disabled":""}>&darr;</button></div>
             <button class="rm" data-rm="${i}">&times;</button></div>`).join("");
         l.querySelectorAll("[data-up]").forEach((b)=> b.onclick=()=>move(+b.dataset.up,-1));
         l.querySelectorAll("[data-dn]").forEach((b)=> b.onclick=()=>move(+b.dataset.dn,1));
         l.querySelectorAll("[data-rm]").forEach((b)=> b.onclick=()=>{ M.pdfs.splice(+b.dataset.rm,1); renderPdfs(); });
-        $("mergeBtn").disabled = M.pdfs.length<2;
+        // A file that can't be read (encrypted, corrupt) must not be merged.
+        const usable = M.pdfs.filter((p)=>!p.error).length;
+        $("mergeBtn").disabled = usable<2 || M.pdfs.some((p)=>p.error);
+        const bad = M.pdfs.filter((p)=>p.error).length;
+        if(bad) $("mergeNote").textContent = `Remove ${bad} unreadable file${bad>1?"s":""} to continue.`;
       }
       function move(i,d){ const j=i+d; if(j<0||j>=M.pdfs.length) return; [M.pdfs[i],M.pdfs[j]]=[M.pdfs[j],M.pdfs[i]]; renderPdfs(); }
-      async function addPdfs(paths){ for(const p of paths){ if(extOf(p)!=="pdf") continue; if(M.pdfs.some((x)=>x.path===p)) continue; const pages=hasApi?await api.pdfPageCount(p):null; M.pdfs.push({ path:p, name:base(p), pages }); } renderPdfs(); }
+      async function addPdfs(paths){
+        for(const p of paths){
+          if(extOf(p)!=="pdf") continue;
+          if(M.pdfs.some((x)=>x.path===p)) continue;
+          // inspect() gives a page count *and* a reason when the file is unusable,
+          // so an encrypted PDF is reported up front instead of failing the merge.
+          const info = hasApi ? await api.pdfInspect(p) : { pages:null, error:null };
+          M.pdfs.push({ path:p, name:base(p), pages:info.pages, error:info.error });
+        }
+        renderPdfs();
+      }
       $("addPdfs").onclick=async()=>{ if(hasApi){ const f=await api.pickFiles(); addPdfs(f.filter((p)=>extOf(p)==="pdf")); } else $("pdfInput").click(); };
       $("pdfInput").onchange=(e)=> addPdfs([...e.target.files].map((f)=>f.name));
       $("clearPdfs").onclick=()=>{ M.pdfs=[]; renderPdfs(); };
@@ -394,9 +474,14 @@
         $("mergeBtn").disabled=true; $("mergeNote").textContent="Merging…";
         const res=await api.mergePdf({ files:M.pdfs.map((p)=>p.path), defaultName:"merged.pdf" });
         if(res.canceled) $("mergeNote").textContent="Cancelled.";
-        else if(res.ok) $("mergeNote").textContent=`Merged ${M.pdfs.length} files → ${res.pages} pages.`;
+        else if(res.ok){
+          let msg = `Merged ${res.sources.length} files → ${res.pages} pages.`;
+          // Say so when the merge changed the document, rather than losing it quietly.
+          if(res.warnings?.length) msg += "  " + res.warnings.join("  ");
+          $("mergeNote").textContent = msg;
+        }
         else $("mergeNote").textContent="Error: "+res.error;
-        $("mergeBtn").disabled = M.pdfs.length<2;
+        renderPdfs();
       };
 
       function paintSettings(){

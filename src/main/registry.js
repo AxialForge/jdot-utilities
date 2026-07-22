@@ -61,8 +61,22 @@ function describe(tool) {
     description: tool.description || "",
     inputFormats: tool.inputFormats.map((f) => f.toLowerCase()),
     outputFormats: tool.outputFormats.map((f) => f.toLowerCase()),
+    // Optional { inputFormat: [outputFormat, ...] } map of pairs the UI must not
+    // offer, for tools whose input x output cross-product contains nonsense pairs
+    // (same-format "conversions", lossy round-trips). Normalized to lowercase.
+    excludePairs: normalizeExcludes(tool.excludePairs),
     options: tool.options || [],
   };
+}
+
+function normalizeExcludes(raw) {
+  if (!raw || typeof raw !== "object") return {};
+  const out = {};
+  for (const [from, tos] of Object.entries(raw)) {
+    if (!Array.isArray(tos)) continue;
+    out[from.toLowerCase()] = tos.map((t) => String(t).toLowerCase());
+  }
+  return out;
 }
 
 module.exports = { loadTools, describe };

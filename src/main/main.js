@@ -3,9 +3,10 @@ const path = require("node:path");
 const fs = require("node:fs");
 const { loadTools, describe } = require("./registry");
 const { runBatch } = require("./convert");
-const { mergePdfs, pageCount } = require("./pdfops");
+const { mergePdfs, pageCount, inspect: inspectPdf } = require("./pdfops");
 const { listFiles } = require("./fsutil");
 const { locateSoffice } = require("./office");
+const pdfrender = require("./pdfrender");
 const settings = require("./settings");
 const config = require("../config");
 
@@ -47,6 +48,12 @@ app.whenReady().then(() => {
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
+});
+
+// Tear down the pooled offscreen render windows so they don't keep us alive.
+app.on("before-quit", () => {
+  for (const job of jobs.values()) job.abort();
+  pdfrender.shutdown();
 });
 
 // ── Info & tools ──────────────────────────────────────────────
@@ -102,26 +109,56 @@ ipcMain.handle("file:pickOne", async () => {
 });
 
 // ── Conversion ────────────────────────────────────────────────
+// In-flight jobs, so the renderer can cancel a long batch. Keyed by job id.
+const jobs = new Map();
+let nextJobId = 1;
+
 ipcMain.handle("convert:run", async (event, payload) => {
   const { toolId, files, outputFormat, options, outputDir } = payload;
   const tool = tools.get(toolId);
   if (!tool) return { error: `Unknown tool: ${toolId}` };
+
   const { concurrency } = settings.readSync();
-  const results = await runBatch({
-    tool,
-    files,
-    outputFormat,
-    options,
-    outputDir,
-    concurrency,
-    onProgress: (p) => event.sender.send("convert:progress", p),
-    onFileDone: (r) => event.sender.send("convert:fileDone", r),
-  });
-  return { results };
+  const controller = new AbortController();
+  const jobId = nextJobId++;
+  jobs.set(jobId, controller);
+  event.sender.send("convert:started", { jobId, total: files.length });
+
+  try {
+    const results = await runBatch({
+      tool,
+      files,
+      outputFormat,
+      options,
+      outputDir,
+      concurrency,
+      signal: controller.signal,
+      onProgress: (p) => event.sender.send("convert:progress", { ...p, jobId }),
+      onFileDone: (r) => event.sender.send("convert:fileDone", { ...r, jobId }),
+    });
+    return { jobId, results, cancelled: controller.signal.aborted };
+  } finally {
+    jobs.delete(jobId);
+  }
+});
+
+ipcMain.handle("convert:cancel", (_e, jobId) => {
+  // No id = cancel everything in flight (used when the window is closing).
+  if (jobId == null) {
+    for (const c of jobs.values()) c.abort();
+    return { cancelled: true };
+  }
+  const c = jobs.get(jobId);
+  if (!c) return { cancelled: false };
+  c.abort();
+  return { cancelled: true };
 });
 
 // ── PDF operations ────────────────────────────────────────────
 ipcMain.handle("pdf:pageCount", (_e, p) => pageCount(p));
+
+// Page count plus a reason if the file can't be merged (encrypted, corrupt, …).
+ipcMain.handle("pdf:inspect", (_e, p) => inspectPdf(p));
 
 ipcMain.handle("pdf:merge", async (event, { files, defaultName }) => {
   const save = await dialog.showSaveDialog(mainWindow, {
@@ -129,12 +166,28 @@ ipcMain.handle("pdf:merge", async (event, { files, defaultName }) => {
     filters: [{ name: "PDF", extensions: ["pdf"] }],
   });
   if (save.canceled) return { canceled: true };
+
+  // Refuse to write the output over one of the inputs — pdf-lib has already read
+  // them, but the user would still lose a source file.
+  const target = path.resolve(save.filePath).toLowerCase();
+  if (files.some((f) => path.resolve(f).toLowerCase() === target)) {
+    return { ok: false, error: "Choose an output file that isn't one of the inputs." };
+  }
+
+  const controller = new AbortController();
+  const jobId = nextJobId++;
+  jobs.set(jobId, controller);
   try {
-    const res = await mergePdfs(files, save.filePath, (frac) =>
-      event.sender.send("pdf:progress", frac)
+    const res = await mergePdfs(
+      files,
+      save.filePath,
+      (frac) => event.sender.send("pdf:progress", frac),
+      { signal: controller.signal }
     );
-    return { ok: true, ...res };
+    return { ok: true, jobId, ...res };
   } catch (err) {
     return { ok: false, error: err.message };
+  } finally {
+    jobs.delete(jobId);
   }
 });

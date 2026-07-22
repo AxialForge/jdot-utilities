@@ -15,6 +15,12 @@ contextBridge.exposeInMainWorld("api", {
   pickOneFile: () => ipcRenderer.invoke("file:pickOne"),
 
   convert: (payload) => ipcRenderer.invoke("convert:run", payload),
+  cancelConvert: (jobId) => ipcRenderer.invoke("convert:cancel", jobId),
+  onStarted: (cb) => {
+    const h = (_e, d) => cb(d);
+    ipcRenderer.on("convert:started", h);
+    return () => ipcRenderer.removeListener("convert:started", h);
+  },
   onProgress: (cb) => {
     const h = (_e, d) => cb(d);
     ipcRenderer.on("convert:progress", h);
@@ -27,6 +33,7 @@ contextBridge.exposeInMainWorld("api", {
   },
 
   pdfPageCount: (p) => ipcRenderer.invoke("pdf:pageCount", p),
+  pdfInspect: (p) => ipcRenderer.invoke("pdf:inspect", p),
   mergePdf: (payload) => ipcRenderer.invoke("pdf:merge", payload),
   onPdfProgress: (cb) => {
     const h = (_e, d) => cb(d);
