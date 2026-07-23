@@ -42,6 +42,9 @@
       .spacer { margin-left:auto; }
       .badge { font-size:10.5px; color:var(--on-accent); background:var(--warn); padding:2px 7px; border-radius:4px; }
       .ver { font-size:11px; color:var(--muted); }
+      .verchip { font-size:10.5px; font-weight:600; letter-spacing:.02em; color:var(--muted);
+        border:1px solid var(--line); border-radius:5px; padding:1px 6px; margin-left:2px;
+        font-family:ui-monospace,"Cascadia Code",Consolas,monospace; }
 
       main { flex:1; min-height:0; display:flex; }
       [data-view] { flex:1; min-height:0; display:flex; }
@@ -147,7 +150,8 @@
       .range { display:flex; align-items:center; gap:10px; }
       input[type="range"] { accent-color:var(--accent); }
 
-      footer { border-top:1px solid var(--line); padding:7px 16px; font-size:11.5px; color:var(--muted); background:var(--panel); font-family:ui-monospace,Consolas,monospace; }
+      footer { display:flex; align-items:center; gap:14px; border-top:1px solid var(--line); padding:7px 16px; font-size:11.5px; color:var(--muted); background:var(--panel); font-family:ui-monospace,Consolas,monospace; }
+      footer .privacy { margin-left:auto; opacity:.85; }
       ::-webkit-scrollbar { width:10px; height:10px; }
       ::-webkit-scrollbar-thumb { background:var(--line); border-radius:5px; }
       @media (prefers-reduced-motion: reduce) { *{ transition:none !important; animation:none !important; } }
@@ -155,7 +159,7 @@
   </head>
   <body>
     <div class="topbar">
-      <span class="brand"><img class="mark" src="assets/logo.png" alt="" /> <span id="appName">Jdot Utilities</span></span>
+      <span class="brand"><img class="mark" src="assets/logo.png" alt="" /> <span id="appName">Jdot Utilities</span><span class="verchip" id="ver"></span></span>
       <div class="tabs">
         <button class="tab active" data-tab="convert">Convert</button>
         <button class="tab" data-tab="pdf">PDF Tools</button>
@@ -164,7 +168,6 @@
       </div>
       <span class="spacer"></span>
       <span class="badge" id="previewBadge" hidden>Preview</span>
-      <span class="ver" id="ver"></span>
     </div>
 
     <main>
@@ -292,7 +295,7 @@
       </section>
     </main>
 
-    <footer id="status">Ready</footer>
+    <footer><span id="status">Ready</span><span class="privacy">Files are temporary — nothing is saved or remembered after you close the app.</span></footer>
     <input type="file" id="fileInput" multiple hidden />
 
     <script>
@@ -471,7 +474,7 @@
         // The Convert rail leads with Home (the auto-detect landing).
         if(C.section==="convert"){
           const h=document.createElement("button"); h.className="tool-btn"; h.dataset.id="__home__";
-          h.textContent="🏠  Home"; if(C.home) h.classList.add("active");
+          h.textContent="Home"; if(C.home) h.classList.add("active");
           h.onclick=()=>enterHome(); list.appendChild(h);
         }
         // Within Convert, category headers still help; within PDF there's one category
@@ -818,7 +821,7 @@
       function setStatus(t){ $("status").textContent=t; }
 
       (async ()=>{
-        if(hasApi){ const info=await api.info(); $("appName").textContent=info.name; document.title=info.name; $("ver").textContent="v"+info.version; SETTINGS=await api.getSettings(); C.tools=await api.listTools(); }
+        if(hasApi){ const info=await api.info(); $("appName").textContent=info.name; document.title=info.name+" "+info.version; $("ver").textContent="v"+info.version; SETTINGS=await api.getSettings(); C.tools=await api.listTools(); }
         else { $("previewBadge").hidden=false; $("ver").textContent="preview"; C.tools=FALLBACK_TOOLS; }
         applyTheme(SETTINGS.theme); paintSettings(); refreshOffice(); refreshGs(); setSaveLine(); updateSummary();
         // Open on the Convert section (its first tool selected by showTab).

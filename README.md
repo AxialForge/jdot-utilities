@@ -28,16 +28,16 @@ converter doesn't touch the UI.
 
 ## Highlights
 
-- 🔒 **Fully offline & private.** No telemetry, no uploads, no accounts. Verifiable — there are no network calls in the code.
-- 🏠 **Drop-and-go.** The Convert tab's **Home** landing auto-detects a dropped file's type and routes it to the right tool.
-- 📄 **Real PDF toolkit** — merge, split, rotate, delete/extract pages, images↔PDF, PDF→images, PDF→text, **OCR**, and **compress / PDF-A**.
-- 🔁 **Document conversion** — Markdown, HTML, Word (`.docx`), plain text, PDF — any-to-any.
-- 🖼 **Image conversion** — PNG, JPG, WebP, AVIF, TIFF, GIF, plus HEIC/HEIF (iPhone photos), with resize and quality.
-- 🧾 **Data conversion** — JSON, YAML, CSV, TSV, XML, any-to-any.
-- 📊 **Office** (via installed LibreOffice) — Word, spreadsheet, and presentation families, each to PDF.
-- 🧭 **All Tools tab** — every capability as a simple card: what it does and its formats, one click to open.
-- ⚡ **Batch** — drop 100+ files, per-file progress, a concurrency limit, and cancel.
-- 🎨 **Three themes** — Light, Grey, Black, with the brand-blue accent.
+- **Fully offline & private.** No telemetry, no uploads, no accounts. Verifiable — there are no network calls in the code.
+- **Drop-and-go.** The Convert tab's **Home** landing auto-detects a dropped file's type and routes it to the right tool.
+- **Real PDF toolkit** — merge, split, rotate, delete/extract pages, images↔PDF, PDF→images, PDF→text, **OCR**, and **compress / PDF-A**.
+- **Document conversion** — Markdown, HTML, Word (`.docx`), plain text, PDF — any-to-any.
+- **Image conversion** — PNG, JPG, WebP, AVIF, TIFF, GIF, plus HEIC/HEIF (iPhone photos), with resize and quality.
+- **Data conversion** — JSON, YAML, CSV, TSV, XML, any-to-any.
+- **Office** (via installed LibreOffice) — Word, spreadsheet, and presentation families, each to PDF.
+- **All Tools tab** — every capability as a simple card: what it does and its formats, one click to open.
+- **Batch** — drop 100+ files, per-file progress, a concurrency limit, and cancel.
+- **Three themes** — Light, Grey, Black, with the brand-blue accent.
 
 ### Tools in the app today
 
@@ -56,7 +56,7 @@ converter doesn't touch the UI.
 | OCR → Text | PDF | scanned pdf / image → txt *(offline OCR)* |
 | Compress / PDF-A | PDF | pdf → smaller pdf, or archival PDF/A *(needs Ghostscript)* |
 
-👉 **Full capability list — current and planned — is in [FORMATS.md](FORMATS.md).**
+**Full capability list — current and planned — is in [FORMATS.md](FORMATS.md).**
 Release notes are in [CHANGELOG.md](CHANGELOG.md).
 
 ---

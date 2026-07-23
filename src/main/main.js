@@ -28,7 +28,7 @@ function createWindow() {
     minWidth: 900,
     minHeight: 580,
     backgroundColor: "#1b1c1e",
-    title: config.APP_NAME,
+    title: `${config.APP_NAME} ${config.VERSION}`,
     icon: path.join(__dirname, "..", "..", "build", "icon.ico"),
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
