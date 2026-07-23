@@ -1,130 +1,161 @@
-# Jdot Utilities — Format & Conversion Reference
+# Jdot Utilities — Master Conversion Sheet
 
-How to read this: **within a tool, any listed input converts to any listed output**
-unless a note says otherwise. Each planned tool names the engine that would power
-it, so the format list reflects what that engine genuinely handles — not a wish list.
+Everything Jdot Utilities can do today, and everything it realistically *could* do
+at this size and complexity. Each entry names the **engine** that powers it, so the
+format list reflects what that engine genuinely handles — not a wish list.
+
+**How to read a tool:** within one tool, any listed input converts to any listed
+output, unless a note or an excluded-pair says otherwise.
+
+**Legend**
+- ✅ **Shipping** — built, tested, in the app now.
+- 🟡 **Planned** — designed, engine chosen, not built yet.
+- 💡 **Candidate** — plausible at this complexity; not yet committed.
+- **Offline** — every tool runs entirely on your machine. "Bundled binary" = the
+  engine ships inside the `.exe`; "installed" = detected on your system, not shipped.
 
 ---
 
-## Shipping now
+## 1. Documents ✅ (+ 🟡 expansion)
 
-### Image Converter — engine: `sharp` + `heic-convert` (offline)
-
-- **Inputs:** png, jpg, jpeg, webp, avif, tiff, gif, svg, heic, heif
-- **Outputs:** png, jpg, jpeg, webp, avif, tiff, gif
-
-Any input converts to any output. SVG in is rasterized; HEIC/HEIF (iPhone photos)
-decode via `heic-convert`. Options: max width (resize), quality (JPEG/WebP/AVIF).
-`sharp` ships prebuilt binaries so it stays offline — it just adds a build step
-when packaging. (bmp/ico aren't covered by sharp; ico output can be added later.)
-
-### Document Converter — engines: `marked` + `turndown` + `mammoth` + Electron (pure JS, offline)
-
-No pandoc or LibreOffice binary required; PDF is rendered by Electron's built-in
-Chromium. Any input converts to any output:
+**Engine now:** `marked` + `turndown` + `mammoth` + `html-to-docx` + Electron's
+Chromium for PDF — pure JS, offline, no binary.
 
 | From \ To | html | md | txt | pdf | docx |
 |-----------|:----:|:--:|:---:|:---:|:----:|
-| **md**    |  ✓   | —  |  ✓  |  ✓  |  ✓   |
-| **html**  |  —   | ✓  |  ✓  |  ✓  |  ✓   |
-| **docx**  |  ✓   | ✓  |  ✓  |  ✓  |  —   |
-| **txt**   |  ✓   | ✓  |  —  |  ✓  |  ✓   |
+| **md**    |  ✅  | —  | ✅  | ✅  | ✅   |
+| **html**  |  —   | ✅ | ✅  | ✅  | ✅   |
+| **docx**  |  ✅  | ✅ | ✅  | ✅  | —    |
+| **txt**   |  ✅  | ✅ | —   | ✅  | ✅   |
 
-Inputs: md, markdown, html, htm, docx, txt. Option: PDF page size (Letter / A4 / Legal / Tabloid).
+Inputs: md, markdown, html, htm, docx, txt. Options: PDF page size (Letter/A4/Legal/
+Tabloid), landscape. Same-format pairs (docx→docx, etc.) are intentionally hidden.
 
-### Office Converter — engine: LibreOffice (installed, not bundled)
-
-Uses an installed LibreOffice (auto-detected; path configurable in Settings).
-Split into three families so only valid pairs are offered — each converts within
-its family and to PDF:
-
-- **Word:** docx, doc, odt, rtf → pdf, docx, odt, rtf
-- **Spreadsheets:** xlsx, xls, ods, csv → pdf, xlsx, ods, csv
-- **Presentations:** pptx, ppt, odp → pdf, pptx, odp
-
-Everything below is the remaining build-out.
+**🟡 Expansion — `pandoc` sidecar (~130 MB bundled).** One binary takes this from 6
+formats to ~45 and writes *real* `.docx` (retiring `html-to-docx` + `mammoth`):
+- **Adds inputs:** rst, latex/tex, org, asciidoc, epub, ipynb, docbook, mediawiki, textile, odt, rtf
+- **Adds outputs:** rst, latex, org, asciidoc, epub, docbook, ipynb, rtf, odt, typst, fb2
+- `pdf` stays output-only. `pdf → editable` belongs to the PDF tools (text/OCR), not here.
 
 ---
 
-## Planned tools
+## 2. Office ✅
 
-### 1. Image Converter (expanded) — engine: `sharp` or ImageMagick sidecar
-Upgrades the built-in tool to modern/wide formats.
+**Engine:** LibreOffice, **installed** (auto-detected; path set in Settings), not
+bundled (~400 MB). Split into three families so only valid pairs are offered; each
+converts within its family and to PDF.
 
-- **Inputs:** png, jpg, jpeg, webp, gif, bmp, tiff, avif, heic, heif, svg, ico, raw (camera)
-- **Outputs:** png, jpg, jpeg, webp, gif, bmp, tiff, avif, heif, ico, pdf
-- **Notes:** any raster in → any raster out. `svg` in is rasterized. `pdf` out wraps one image per page.
+| Family | Formats | + always |
+|--------|---------|----------|
+| **Word** ✅ | docx, doc, odt, rtf | → pdf |
+| **Spreadsheets** ✅ | xlsx, xls, ods, csv | → pdf |
+| **Presentations** ✅ | pptx, ppt, odp | → pdf |
 
-### 2. Audio Converter — engine: `ffmpeg` sidecar
-- **Formats (any → any):** mp3, wav, flac, aac, m4a, ogg, opus, wma, aiff, alac, amr
-- **Options worth exposing:** bitrate, sample rate, channels (mono/stereo).
+**🟡 Add:** PDF/A export toggle (LibreOffice supports it) — see §4. **💡 Add:**
+Writer → epub, Calc → tsv/html.
 
-### 3. Video Converter — engine: `ffmpeg` sidecar
+---
+
+## 3. Images ✅ (+ 🟡 bmp/ico/raw)
+
+**Engine:** `sharp` (prebuilt native, offline) + `heic-convert` for iPhone photos.
+
+- **Inputs ✅:** png, jpg, jpeg, webp, avif, tiff, gif, svg, heic, heif
+- **Outputs ✅:** png, jpg, jpeg, webp, avif, tiff, gif
+- Any input → any output. SVG in is rasterized. Options: max width (resize), quality.
+- **🟡 Add:** bmp (in/out), ico (out, multi-size), **raw** camera formats (cr2, nef, arw, dng) in.
+
+---
+
+## 4. PDF Toolkit ✅ (+ 🟡 Ghostscript)
+
+The richest area — more operations than a format grid. All ✅ items are `pdf-lib`
+(pure JS) or `pdfjs-dist` + `@napi-rs/canvas` (prebuilt native), fully offline.
+
+| Tool | Flow | Engine | Status |
+|------|------|--------|:------:|
+| **Merge PDFs** | many pdf → 1 pdf | pdf-lib | ✅ |
+| **Split PDF** | 1 pdf → many pdf (per-page / every-N / ranges) | pdf-lib | ✅ |
+| **Rotate pages** | pdf → pdf (90/180/270, any range) | pdf-lib | ✅ |
+| **Delete pages** | pdf → pdf | pdf-lib | ✅ |
+| **Extract pages** | pdf → pdf | pdf-lib | ✅ |
+| **Images → PDF** | many images → 1 pdf | sharp + pdf-lib | ✅ |
+| **PDF → Images** | pdf → png/jpg per page (DPI, range) | pdfjs + canvas | ✅ |
+| **PDF → Text** | pdf → txt (text layer) | pdfjs | ✅ |
+| **PDF/A (archival)** | pdf → pdf/a-1b/2b/3b | **Ghostscript** (bundled, ~30 MB) | 🟡 **next** |
+| **Compress / downsample** | pdf → smaller pdf | Ghostscript | 🟡 |
+| **OCR scanned PDF** | image-pdf → searchable pdf / txt | `tesseract.js` (bundled lang data) | 🟡 |
+| **Watermark / stamp** | pdf → pdf | pdf-lib | 💡 |
+| **Encrypt / decrypt** | pdf ↔ pdf (password) | needs crypto-capable lib / qpdf | 💡 |
+| **Reorder / N-up** | pdf → pdf | pdf-lib | 💡 |
+| **Edit metadata** | pdf → pdf (title/author/…) | pdf-lib | 💡 |
+
+> **PDF/A** can't come from pdf-lib (needs embedded fonts, ICC color profiles, XMP
+> metadata). The chosen engine is a **bundled Ghostscript sidecar**, which also gives
+> compression — one binary, two features. This is the next build step.
+
+---
+
+## 5. Audio 🟡 — `ffmpeg` sidecar (~80 MB bundled)
+
+Any → any: **mp3, wav, flac, aac, m4a, ogg, opus, wma, aiff, alac, amr**.
+Options: bitrate, sample rate, channels (mono/stereo). Wires the existing
+hardware-acceleration setting where relevant.
+
+## 6. Video 🟡 — `ffmpeg` sidecar (same binary as audio)
+
 - **Inputs:** mp4, mkv, mov, webm, avi, flv, wmv, mpeg, mpg, m4v, 3gp, ts
 - **Outputs (video):** mp4, mkv, mov, webm, avi, gif (animated)
-- **Outputs (extract audio):** mp3, wav, aac, flac, m4a, opus
-- **Notes:** any container → any container; video → animated gif; video → audio-only.
+- **Extract:** video → audio-only (mp3/wav/aac/…), video → frames (png/jpg), video → gif
+- Options: resolution, bitrate/CRF, fps, trim, `-hwaccel`.
 
-### 4. Document Converter — engines: `pandoc` (markup) + LibreOffice headless (office)
-Two engines because they cover different directions.
+## 7. Ebooks 🟡 — `calibre` (`ebook-convert`) sidecar, installed
 
-**Pandoc (markup / text):**
-- **Inputs:** md, markdown, html, docx, odt, rtf, latex/tex, epub, rst, org, ipynb
-- **Outputs:** md, html, docx, odt, rtf, latex, pdf, epub, pptx, txt
+- **In:** epub, mobi, azw3, azw, fb2, lit, pdb, htmlz, docx, txt, html
+- **Out:** epub, mobi, azw3, fb2, pdf, txt, htmlz, docx, rtf — effectively any → any.
 
-**LibreOffice (office ↔ office, office → pdf):**
-- docx ↔ doc ↔ odt ↔ rtf ↔ txt
-- xlsx ↔ xls ↔ ods ↔ csv
-- pptx ↔ ppt ↔ odp
-- any of the above → **pdf**
+## 8. Data 💡 — pure JS, offline, no binary
 
-- **Notes:** `pdf` is **output-only** here. `pdf → docx/editable` is unreliable and belongs in the PDF tool via text extraction/OCR, not this one.
+Any → any: **json, yaml, csv, tsv, xml, toml**. Flat formats (csv/tsv) flatten
+nested structures on the boundary — a UI heads-up, not a blocker.
 
-### 5. Ebook Converter — engine: `calibre` (`ebook-convert`) sidecar
-- **Inputs:** epub, mobi, azw3, azw, fb2, lit, pdb, htmlz, docx, txt, html
-- **Outputs:** epub, mobi, azw3, fb2, pdf, txt, htmlz, docx, rtf
-- **Notes:** effectively any → any; calibre is permissive.
+## 9. Archives 💡 — pure JS (`fflate`/`tar-stream`) or `7-Zip` sidecar
 
-### 6. Data Converter — pure JS (no binary, fully offline)
-- **Formats (any → any):** json, yaml, csv, tsv, xml, toml
-- **Notes:** csv/tsv are flat/tabular, so nested json/yaml/xml collapses or nests on the boundary — worth a heads-up in the UI, not a blocker.
+- **Create (collect):** files → zip / tar / tar.gz
+- **Extract (explode):** zip / tar / tar.gz / 7z / rar → files
 
-### 7. PDF Toolkit — engines: JS PDF libs + `poppler`/Ghostscript sidecar
-More operations than a format grid:
+## 10. Vector & Trace 💡 — Inkscape + Potrace/VTracer sidecars
 
-- **pdf → images:** png, jpg, tiff (one file per page)
-- **images → pdf:** png, jpg, tiff, bmp, webp → single pdf
-- **pdf → txt:** text extraction (OCR path optional via `tesseract`)
-- **pdf ⨯ pdf:** merge, split, rotate, delete pages
+- **Vector ↔:** svg ↔ pdf, eps, ps, png, emf, wmf; ai/cdr in (Inkscape)
+- **Raster → vector:** png/jpg/bmp → svg auto-trace (Potrace/VTracer)
 
-### 8. Vector & Trace — engines: Inkscape + Potrace/VTracer
-- **Inkscape (vector ↔ vector/raster):** svg ↔ pdf, eps, ps, png, emf, wmf; ai/cdr in
-- **Potrace / VTracer (raster → vector):** png, jpg, bmp → svg (auto-trace)
+## 11. 3D Mesh 💡 — `assimp` sidecar
 
-### 9. 3D Mesh Converter — engine: `assimp` sidecar
-- **Inputs:** stl, obj, ply, gltf, glb, 3mf, fbx, dae, 3ds, x
-- **Outputs:** stl, obj, ply, gltf, glb, 3mf, dae, x
-- **Notes:** any mesh → any mesh. The high-value pairs for slicing/printing are
-  **stl ↔ 3mf ↔ obj ↔ ply ↔ gltf**.
+Any mesh → any mesh: stl, obj, ply, gltf, glb, 3mf, fbx, dae, 3ds, x.
+High-value for printing: **stl ↔ 3mf ↔ obj ↔ ply ↔ gltf**.
 
 ---
 
-## Quick coverage summary
+## Coverage & cost summary
 
-| Tool | Engine | # in | # out | Offline binary needed? |
-|------|--------|:----:|:-----:|:----------------------:|
-| Image (built-in) | jimp | 5 | 5 | No |
-| Image (expanded) | sharp / ImageMagick | 13 | 11 | Yes (or sharp: no) |
-| Audio | ffmpeg | 11 | 11 | Yes |
-| Video | ffmpeg | 12 | 11 | Yes |
-| Documents (md/html/docx/txt/pdf) | JS + Electron | 6 | 5 | **No** |
-| Office (xlsx/pptx/odt/doc/rtf) | LibreOffice | ~10 | ~5 | Yes |
-| Ebooks | calibre | 11 | 9 | Yes |
-| Data | pure JS | 6 | 6 | No |
-| PDF | poppler / JS | — | — | Partly |
-| Vector/Trace | Inkscape + Potrace | ~10 | ~10 | Yes |
-| 3D Mesh | assimp | 10 | 8 | Yes |
+| Area | Engine | Offline | Bundle cost | Status |
+|------|--------|:-------:|:-----------:|:------:|
+| Documents | JS + Electron | yes | — | ✅ |
+| Documents (expanded) | pandoc | yes | ~130 MB | 🟡 |
+| Office | LibreOffice | yes | installed (~400 MB) | ✅ |
+| Images | sharp + heic-convert | yes | prebuilt native | ✅ |
+| PDF toolkit (8 tools) | pdf-lib / pdfjs / canvas | yes | prebuilt native | ✅ |
+| PDF/A + compress | Ghostscript | yes | ~30 MB | 🟡 next |
+| OCR | tesseract.js | yes | ~15 MB + lang | 🟡 |
+| Audio + Video | ffmpeg | yes | ~80 MB | 🟡 |
+| Ebooks | calibre | yes | installed | 🟡 |
+| Data | pure JS | yes | — | 💡 |
+| Archives | fflate / 7-Zip | yes | small / ~2 MB | 💡 |
+| Vector/Trace | Inkscape + Potrace | yes | large | 💡 |
+| 3D Mesh | assimp | yes | ~10 MB | 💡 |
 
-The two pure-JS tools (Data, and the current Image tool) need **no** bundled
-binary, so they stay trivially offline. Everything else follows the sidecar
-pattern in `_template.js`: ship the binary in `resources/bin/`, still no network.
+**Everything is offline** — no format ever needs the network. Pure-JS and
+prebuilt-native tools ship with zero setup; sidecar tools follow the pattern in
+`src/tools/_template.js` (drop the binary in `resources/bin/`, list it under
+electron-builder `extraResources`). A "with all the fixings" build — pandoc +
+ffmpeg + Ghostscript on top of what's shipping — lands around **420 MB**.
