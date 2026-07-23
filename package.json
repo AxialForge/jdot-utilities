@@ -5,6 +5,9 @@
   "main": "src/main/main.js",
   "author": "Joe",
   "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "start": "electron .",
     "dev": "electron .",

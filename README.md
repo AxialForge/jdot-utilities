@@ -90,9 +90,10 @@ npm install
 npm run dev
 ```
 
-> **Node 18+** is required. `npm install` fetches the prebuilt native binaries
-> (`sharp`, `@napi-rs/canvas`). If a postinstall is blocked on npm 11+, run
-> `npm approve-scripts electron` once.
+> **Node 20+** to run the app; **Node 22+** to run `npm test` (the test script uses
+> a `node --test` glob that needs Node 21+). `npm install` fetches the prebuilt
+> native binaries (`sharp`, `@napi-rs/canvas`). If a postinstall is blocked on
+> npm 11+, run `npm approve-scripts electron` once.
 
 ### Build the Windows `.exe`
 
