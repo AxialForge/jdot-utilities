@@ -2,6 +2,14 @@
 
 All notable changes to Jdot Utilities. Dates are YYYY-MM-DD.
 
+## 0.5.1 — 2026-07-22
+
+- Removed all emojis from the app and the docs — plain, professional text throughout.
+- The version now shows as a chip next to the app name in the toolbar, and in the
+  window title (`Jdot Utilities 0.5.1`) — easier to tell builds apart.
+- Added a persistent note that files are temporary and nothing is saved or
+  remembered after the app closes.
+
 ## 0.5.0 — 2026-07-22
 
 The first public release under [AxialForge](https://github.com/AxialForge). A
