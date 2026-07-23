@@ -1,38 +1,51 @@
-name: Build Windows
+name: Build & Release (Windows)
 
 on:
   push:
     tags:
-      - "v*"        # tag a release (e.g. git tag v0.1.0 && git push --tags)
+      - "v*" # tag a release: git tag v0.5.0 && git push origin v0.5.0
   workflow_dispatch: # or run manually from the Actions tab
 
 jobs:
   build-win:
     runs-on: windows-latest
     permissions:
-      contents: write   # needed to create the release and upload the .exe
+      contents: write # create the release and upload the .exe
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
+
+      # Quality gate. The Node suite runs the data/OCR/PDF engines; Ghostscript
+      # isn't on the runner, so those tests skip themselves rather than fail.
+      - name: Run tests
+        run: npm test
 
       - name: Build .exe
         run: npm run build:win
+        env:
+          # Optional code signing. Add these as repository secrets to sign the
+          # build; without them electron-builder produces an unsigned .exe.
+          #   CSC_LINK             base64 of your .pfx  (or a path to it)
+          #   CSC_KEY_PASSWORD     the .pfx password
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: jdot-utilities-windows
-          path: |
-            dist/*.exe
+          path: dist/*.exe
 
       - name: Attach to release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           files: dist/*.exe
+          generate_release_notes: true

@@ -82,17 +82,18 @@ The richest area — more operations than a format grid. All ✅ items are `pdf-
 | **Images → PDF** | many images → 1 pdf | sharp + pdf-lib | ✅ |
 | **PDF → Images** | pdf → png/jpg per page (DPI, range) | pdfjs + canvas | ✅ |
 | **PDF → Text** | pdf → txt (text layer) | pdfjs | ✅ |
-| **PDF/A (archival)** | pdf → pdf/a-1b/2b/3b | **Ghostscript** (bundled, ~30 MB) | 🟡 **next** |
-| **Compress / downsample** | pdf → smaller pdf | Ghostscript | 🟡 |
-| **OCR scanned PDF** | image-pdf → searchable pdf / txt | `tesseract.js` (bundled lang data) | 🟡 |
+| **OCR → Text** | scanned pdf / image → txt | `tesseract.js` (bundled eng model) | ✅ |
+| **Compress** | pdf → smaller pdf (screen/ebook/printer) | Ghostscript | ✅ |
+| **PDF/A (archival)** | pdf → pdf/a-1b/2b | Ghostscript | ✅ |
+| **OCR → searchable PDF** | scanned pdf → pdf with a text layer | tesseract + pdf-lib | 🟡 |
 | **Watermark / stamp** | pdf → pdf | pdf-lib | 💡 |
 | **Encrypt / decrypt** | pdf ↔ pdf (password) | needs crypto-capable lib / qpdf | 💡 |
 | **Reorder / N-up** | pdf → pdf | pdf-lib | 💡 |
 | **Edit metadata** | pdf → pdf (title/author/…) | pdf-lib | 💡 |
 
-> **PDF/A** can't come from pdf-lib (needs embedded fonts, ICC color profiles, XMP
-> metadata). The chosen engine is a **bundled Ghostscript sidecar**, which also gives
-> compression — one binary, two features. This is the next build step.
+> **Compress / PDF-A** is one tool (`Compress / PDF-A`) whose "Output" preset picks
+> a compression level or a PDF/A conformance level — Ghostscript does both. It
+> auto-detects an installed Ghostscript or uses a bundled copy (`resources/bin/`).
 
 ---
 
@@ -114,10 +115,11 @@ hardware-acceleration setting where relevant.
 - **In:** epub, mobi, azw3, azw, fb2, lit, pdb, htmlz, docx, txt, html
 - **Out:** epub, mobi, azw3, fb2, pdf, txt, htmlz, docx, rtf — effectively any → any.
 
-## 8. Data 💡 — pure JS, offline, no binary
+## 8. Data ✅ — pure JS, offline, no binary
 
-Any → any: **json, yaml, csv, tsv, xml, toml**. Flat formats (csv/tsv) flatten
-nested structures on the boundary — a UI heads-up, not a blocker.
+Any → any: **json, yaml, csv, tsv, xml** (✅). Flat formats (csv/tsv) flatten
+nested structures on the boundary — surfaced as a warning, not a blocker.
+**💡 Add:** toml.
 
 ## 9. Archives 💡 — pure JS (`fflate`/`tar-stream`) or `7-Zip` sidecar
 
@@ -145,11 +147,11 @@ High-value for printing: **stl ↔ 3mf ↔ obj ↔ ply ↔ gltf**.
 | Office | LibreOffice | yes | installed (~400 MB) | ✅ |
 | Images | sharp + heic-convert | yes | prebuilt native | ✅ |
 | PDF toolkit (8 tools) | pdf-lib / pdfjs / canvas | yes | prebuilt native | ✅ |
-| PDF/A + compress | Ghostscript | yes | ~30 MB | 🟡 next |
-| OCR | tesseract.js | yes | ~15 MB + lang | 🟡 |
+| Compress + PDF/A | Ghostscript | yes | installed or ~30 MB bundled | ✅ |
+| OCR | tesseract.js | yes | ~4 MB model bundled | ✅ |
+| Data | pure JS | yes | — | ✅ |
 | Audio + Video | ffmpeg | yes | ~80 MB | 🟡 |
 | Ebooks | calibre | yes | installed | 🟡 |
-| Data | pure JS | yes | — | 💡 |
 | Archives | fflate / 7-Zip | yes | small / ~2 MB | 💡 |
 | Vector/Trace | Inkscape + Potrace | yes | large | 💡 |
 | 3D Mesh | assimp | yes | ~10 MB | 💡 |

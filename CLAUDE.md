@@ -84,6 +84,9 @@ src/
     pdfjs.js             Shared pdfjs-dist loader (dynamic import of the ESM build)
     pdftext.js           PDF -> text (pdfjs text layer; flags scanned/image-only PDFs)
     pdfraster.js         PDF -> images (pdfjs render onto @napi-rs/canvas)
+    ocr.js               OCR via tesseract.js (offline eng model; serialized worker)
+    dataconv.js          JSON/YAML/CSV/TSV/XML conversion (pure JS)
+    gs.js                Ghostscript locator + compress / PDF-A
     office.js            LibreOffice locator + headless convert (unique profile per call)
   tools/
     _template.js         Copy to add a tool (documents the contract + sidecar pattern)
@@ -160,6 +163,15 @@ To retheme, edit those token blocks only — all accent colour is confined to th
   from `src/main/pdfjs.js`; don't `require()` it. Its font/cMap "urls" must use
   forward slashes with a trailing `/` (pdfjs rejects a Windows `\`) — `pdfjs.js`
   handles that. Text extraction is pure JS; rendering needs `@napi-rs/canvas`.
+- **OCR ships its model.** `resources/tessdata/eng.traineddata` (~4 MB) is committed
+  and shipped via `extraResources`; `ocr.js` reads it locally so OCR is offline —
+  never point tesseract.js at a CDN. `tesseract.js` + `tesseract.js-core` are in
+  `asarUnpack` (wasm core + worker load from disk). One worker, calls serialized.
+- **Ghostscript is optional.** `gs.js` resolves a bundled binary (`resources/bin/`),
+  then an installed one, then the `ghostscriptPath` setting. Absent → the tool
+  throws a clear message; its tests skip. Compress/PDF-A is `pdf-optimize`.
+- **Third native/asset deps:** `sharp`, `@napi-rs/canvas`, and the tesseract wasm
+  are all `asarUnpack`. Bumping any needs a Windows build so the win32 binary matches.
 - **PDF output needs Chromium** (Electron `printToPDF`) — it can't run in plain
   `node`, so `pdfrender.js` is lazy-required and only `npm run test:pdf` covers it.
 - **Anything that turns HTML into another format must call

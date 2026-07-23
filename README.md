@@ -30,15 +30,34 @@ converter doesn't touch the UI.
 
 - 🔒 **Fully offline & private.** No telemetry, no uploads, no accounts. Verifiable — there are no network calls in the code.
 - 🏠 **Drop-and-go.** The Convert tab's **Home** landing auto-detects a dropped file's type and routes it to the right tool.
-- 📄 **Real PDF toolkit** — merge, split, rotate, delete/extract pages, images→PDF, PDF→images, PDF→text. Eight tools, all offline.
-- 🔁 **Document conversion** — Markdown, HTML, Word (`.docx`), plain text, and PDF, any-to-any.
+- 📄 **Real PDF toolkit** — merge, split, rotate, delete/extract pages, images↔PDF, PDF→images, PDF→text, **OCR**, and **compress / PDF-A**.
+- 🔁 **Document conversion** — Markdown, HTML, Word (`.docx`), plain text, PDF — any-to-any.
 - 🖼 **Image conversion** — PNG, JPG, WebP, AVIF, TIFF, GIF, plus HEIC/HEIF (iPhone photos), with resize and quality.
+- 🧾 **Data conversion** — JSON, YAML, CSV, TSV, XML, any-to-any.
 - 📊 **Office** (via installed LibreOffice) — Word, spreadsheet, and presentation families, each to PDF.
 - 🧭 **All Tools tab** — every capability as a simple card: what it does and its formats, one click to open.
 - ⚡ **Batch** — drop 100+ files, per-file progress, a concurrency limit, and cancel.
 - 🎨 **Three themes** — Light, Grey, Black, with the brand-blue accent.
 
+### Tools in the app today
+
+| Tool | Category | Converts |
+|------|----------|----------|
+| Document Converter | Document | md · html · docx · txt → html · md · txt · pdf · docx |
+| Image Converter | Image | png · jpg · webp · avif · tiff · gif · svg · heic · heif → png · jpg · webp · avif · tiff · gif |
+| Data Converter | Data | json · yaml · csv · tsv · xml (any → any) |
+| Word / Spreadsheets / Presentations | Office | docx·doc·odt·rtf / xlsx·xls·ods·csv / pptx·ppt·odp — each → pdf *(needs LibreOffice)* |
+| Merge PDFs | PDF | many PDFs → one |
+| Split PDF | PDF | one PDF → many (per-page / every-N / ranges) |
+| Rotate / Delete / Extract pages | PDF | pdf → pdf |
+| Images → PDF | PDF | images → one PDF |
+| PDF → Images | PDF | pdf → png / jpg per page |
+| PDF → Text | PDF | pdf → txt (text layer) |
+| OCR → Text | PDF | scanned pdf / image → txt *(offline OCR)* |
+| Compress / PDF-A | PDF | pdf → smaller pdf, or archival PDF/A *(needs Ghostscript)* |
+
 👉 **Full capability list — current and planned — is in [FORMATS.md](FORMATS.md).**
+Release notes are in [CHANGELOG.md](CHANGELOG.md).
 
 ---
 
@@ -48,9 +67,17 @@ converter doesn't touch the UI.
 [Releases](https://github.com/AxialForge/jdot-utilities/releases) page — either the
 installer or the single-file portable build. No setup, no dependencies.
 
-Some tools are optional:
-- **Office** conversions need [LibreOffice](https://www.libreoffice.org/) installed
-  (auto-detected; path configurable in Settings). Everything else is self-contained.
+Two tools use an external engine (both auto-detected; path configurable in Settings):
+- **Office** conversions need [LibreOffice](https://www.libreoffice.org/).
+- **Compress / PDF-A** needs [Ghostscript](https://www.ghostscript.com/) (or a
+  bundled copy — see below).
+
+Everything else — including **OCR**, which ships its own English model — is
+self-contained and works with no setup.
+
+> **Note on unsigned builds:** releases aren't code-signed yet, so Windows
+> SmartScreen may warn on first run ("More info → Run anyway"). Signing is wired
+> into the build (see [Code signing](#code-signing)) and just needs a certificate.
 
 ---
 
@@ -77,13 +104,40 @@ npm run build:portable   # single-file portable .exe only
 Build **on Windows** (or the Windows CI runner) so the correct native binaries are
 fetched. The app icon comes from `build/icon.ico`.
 
+Pushing a tag builds and publishes a release automatically — see
+[`.github/workflows/build.yml`](.github/workflows/build.yml):
+
+```bash
+git tag v0.5.0 && git push origin v0.5.0   # → CI builds the .exe, attaches it to a Release
+```
+
+### Code signing
+
+Signing is wired into the build; it just needs a certificate. Set two environment
+variables (locally, or as repository **secrets** for CI) and the `.exe` is signed:
+
+| Variable | Value |
+|----------|-------|
+| `CSC_LINK` | your code-signing `.pfx` as base64, or a path to it |
+| `CSC_KEY_PASSWORD` | the `.pfx` password |
+
+Without them, the build succeeds unsigned (Windows SmartScreen will warn on first run).
+
+### Optional: bundle Ghostscript
+
+Compress / PDF-A uses Ghostscript. It auto-detects an installed copy, or you can
+ship one inside the app: put `gswin64c.exe` and its DLLs in `resources/bin/` and
+enable the `extraResources` entry in `electron-builder.yml`.
+
 ### Tests
 
 ```bash
-npm test                          # ~115 unit/integration tests (plain Node)
+npm test                          # ~143 unit/integration tests (plain Node)
 npx electron test/electron-pdf.js # PDF-output checks (needs Chromium)
-npx electron test/electron-ops.js # collect/explode tools end-to-end
+npx electron test/electron-ops.js # collect/explode + OCR tools end-to-end
 ```
+
+Ghostscript tests skip themselves when `gs` isn't installed.
 
 ---
 
