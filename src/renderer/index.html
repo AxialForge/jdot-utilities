@@ -249,6 +249,28 @@
         { id:"pdf-merge", name:"Merge PDFs", kind:"collect", category:"PDF",
           description:"Combine several PDFs into a single document. Drag to reorder before merging.",
           inputFormats:["pdf"], outputFormats:["pdf"], ordered:true, minInputs:2, defaultName:"merged", options:[] },
+        { id:"pdf-split", name:"Split PDF", kind:"explode", category:"PDF",
+          description:"Break a PDF into several files — one per page, fixed-size groups, or custom ranges.",
+          inputFormats:["pdf"], outputFormats:["pdf"], options:[
+            {key:"mode",label:"Split by",type:"select",choices:["each","every","ranges"],default:"each"},
+            {key:"size",label:"Pages per file (for “every”)",type:"number",min:1,max:5000,default:1},
+            {key:"spec",label:"Ranges (for “ranges”), e.g. 1-3, 4-6",type:"text",default:""}] },
+        { id:"pdf-rotate", name:"Rotate PDF", kind:"convert", category:"PDF",
+          description:"Rotate pages 90/180/270°. Leave the range blank to rotate every page.",
+          inputFormats:["pdf"], outputFormats:["pdf"], options:[
+            {key:"angle",label:"Rotation",type:"select",choices:["90","180","270"],default:"90"},
+            {key:"spec",label:"Pages (blank = all), e.g. 1-3, 5",type:"text",default:""}] },
+        { id:"pdf-delete", name:"Delete Pages", kind:"convert", category:"PDF",
+          description:"Remove the named pages and keep the rest, e.g. 1, 4-6.",
+          inputFormats:["pdf"], outputFormats:["pdf"], options:[{key:"spec",label:"Pages to remove, e.g. 1, 4-6",type:"text",default:""}] },
+        { id:"pdf-extract", name:"Extract Pages", kind:"convert", category:"PDF",
+          description:"Keep only the named pages, e.g. 2-5. Order follows what you type.",
+          inputFormats:["pdf"], outputFormats:["pdf"], options:[{key:"spec",label:"Pages to keep, e.g. 2-5",type:"text",default:""}] },
+        { id:"images-to-pdf", name:"Images → PDF", kind:"collect", category:"PDF",
+          description:"Combine images into a single PDF, one image per page. Drag to set page order.",
+          inputFormats:["png","jpg","jpeg","webp","gif","tiff","bmp"], outputFormats:["pdf"], ordered:true, minInputs:1, defaultName:"images", options:[
+            {key:"pageSize",label:"Page size",type:"select",choices:["Fit","Letter","A4","Legal"],default:"Fit"},
+            {key:"margin",label:"Margin (pts, fixed sizes only)",type:"number",min:0,max:200,default:18}] },
         { id:"image-convert", name:"Image Converter", category:"Image", description:"Convert between image formats (incl. WebP, AVIF, HEIC), with optional resize and quality.",
           inputFormats:["png","jpg","jpeg","webp","avif","tiff","gif","svg","heic","heif"], outputFormats:["png","jpg","jpeg","webp","avif","tiff","gif"],
           options:[{key:"maxWidth",label:"Max width (px, 0 = keep original)",type:"number",min:0,max:40000,default:0},
@@ -302,8 +324,9 @@
         $("accept").textContent = "Accepts: " + C.active.inputFormats.join(", ");
         $("runNote").textContent = "";
 
-        // A converter picks its target format; collect/explode have a fixed one.
-        $("formatField").hidden = !isConvert();
+        // A converter picks its target format — but only when there's a choice.
+        // A single-output converter (e.g. Rotate PDF: pdf->pdf) shows no picker.
+        $("formatField").hidden = !isConvert() || (C.active.outputFormats||[]).length<=1;
         $("addFolder").hidden = isExplode();
         $("drop").querySelector("div").textContent =
           isExplode() ? "Drop one file here" : "Drop files here";

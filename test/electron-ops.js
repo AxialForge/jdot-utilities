@@ -10,7 +10,8 @@ const assert = require("node:assert");
 const { PDFDocument, StandardFonts } = require("pdf-lib");
 
 const { loadTools, kindOf } = require("../src/main/registry");
-const { runCollect } = require("../src/main/ops");
+const { runCollect, runExplode } = require("../src/main/ops");
+const { runBatch } = require("../src/main/convert");
 
 const results = [];
 async function check(name, fn) {
@@ -58,6 +59,51 @@ app.whenReady().then(async () => {
     const res = await runCollect({ tool: tools.get("pdf-merge"), files: [a, b], outputPath: a });
     assert.strictEqual(res.ok, false);
     assert.match(res.error, /isn't one of the inputs/);
+  });
+
+  await check("pdf-split runs through runExplode with its options", async () => {
+    const d = fs.mkdtempSync(path.join(os.tmpdir(), "jdot-eops-"));
+    const src = await makePdf(path.join(d, "book.pdf"), 6);
+    const res = await runExplode({
+      tool: tools.get("pdf-split"),
+      file: src,
+      outputDir: path.join(d, "out"),
+      options: { mode: "every", size: 2 },
+    });
+    assert.ok(res.ok, JSON.stringify(res));
+    assert.strictEqual(res.outputs.length, 3, "6 pages / 2 = 3 files");
+  });
+
+  await check("pdf-rotate runs through runBatch as a convert tool", async () => {
+    const d = fs.mkdtempSync(path.join(os.tmpdir(), "jdot-eops-"));
+    const src = await makePdf(path.join(d, "book.pdf"), 3);
+    const out = await runBatch({
+      tool: tools.get("pdf-rotate"),
+      files: [src],
+      outputFormat: "pdf",
+      outputDir: d,
+      options: { angle: "180", spec: "" },
+    });
+    assert.ok(out[0].ok, JSON.stringify(out[0]));
+    // Collision-safe naming must not have overwritten the source.
+    assert.notStrictEqual(path.resolve(out[0].outputPath), path.resolve(src));
+    const doc = await PDFDocument.load(await fs.promises.readFile(out[0].outputPath), { updateMetadata: false });
+    assert.ok(doc.getPages().every((p) => p.getRotation().angle === 180));
+  });
+
+  await check("images-to-pdf runs through runCollect", async () => {
+    const d = fs.mkdtempSync(path.join(os.tmpdir(), "jdot-eops-"));
+    const sharp = require("sharp");
+    const imgs = [];
+    for (const c of [{ r: 200, g: 0, b: 0 }, { r: 0, g: 0, b: 200 }]) {
+      const p = path.join(d, `${imgs.length}.png`);
+      await sharp({ create: { width: 120, height: 90, channels: 3, background: c } }).png().toFile(p);
+      imgs.push(p);
+    }
+    const out = path.join(d, "album.pdf");
+    const res = await runCollect({ tool: tools.get("images-to-pdf"), files: imgs, outputPath: out, options: { pageSize: "Fit" } });
+    assert.ok(res.ok, JSON.stringify(res));
+    assert.strictEqual(res.pages, 2);
   });
 
   const failures = results.filter((r) => r[0] === "FAIL");

@@ -2,7 +2,8 @@
 
 const fs = require("node:fs");
 const path = require("node:path");
-const { PDFDocument, PDFName } = require("pdf-lib");
+const { PDFDocument, PDFName, degrees } = require("pdf-lib");
+const { parsePageSpec, pageIndices, complementIndices } = require("./pagespec");
 
 /**
  * Load a PDF, failing with a message a user can act on.
@@ -120,4 +121,120 @@ async function inspect(inputPath) {
   }
 }
 
-module.exports = { mergePdfs, pageCount, inspect, loadPdf };
+// Build a new document from a subset of another's pages, in a given order.
+// Centralizes the copyPages dance so extract/delete/split stay one-liners.
+async function pagesToNewDoc(src, indices) {
+  const out = await PDFDocument.create();
+  const copied = await out.copyPages(src, indices);
+  copied.forEach((p) => out.addPage(p));
+  out.setProducer("JDot Utilities");
+  out.setCreationDate(new Date());
+  return out;
+}
+
+/**
+ * Split one PDF into several. `mode`:
+ *   "each"    one file per page
+ *   "every"   groups of `size` pages
+ *   "ranges"  one file per comma-separated range in `spec` (e.g. "1-3,4-6")
+ *
+ * `allocate(suffix, ext)` comes from the explode runner and returns a
+ * collision-safe path. Returns { outputs, warnings }.
+ */
+async function splitPdf(inputPath, { mode = "each", size = 1, spec = "" } = {}, allocate, onProgress, opts = {}) {
+  const src = await loadPdf(inputPath, path.basename(inputPath));
+  const total = src.getPageCount();
+
+  // Each group is a list of 0-based indices that becomes one output file.
+  let groups;
+  if (mode === "ranges") {
+    const terms = String(spec).split(",").map((s) => s.trim()).filter(Boolean);
+    if (!terms.length) throw new Error("Enter at least one range, e.g. 1-3, 4-6.");
+    groups = terms.map((t) => parsePageSpec(t, total).map((p) => p - 1));
+  } else if (mode === "every") {
+    const n = Math.max(1, Math.floor(size));
+    groups = [];
+    for (let i = 0; i < total; i += n) {
+      groups.push(Array.from({ length: Math.min(n, total - i) }, (_, k) => i + k));
+    }
+  } else {
+    groups = Array.from({ length: total }, (_, i) => [i]);
+  }
+
+  const outputs = [];
+  for (let g = 0; g < groups.length; g += 1) {
+    if (opts.signal?.aborted) throw new Error("Cancelled");
+    const out = await pagesToNewDoc(src, groups[g]);
+    // Label single-page outputs by page number; multi-page by 1-based sequence.
+    const suffix = groups[g].length === 1 ? `p${groups[g][0] + 1}` : `part${g + 1}`;
+    const target = allocate(suffix, "pdf");
+    await fs.promises.writeFile(target, await out.save());
+    outputs.push(target);
+    onProgress?.((g + 1) / groups.length);
+  }
+  return { outputs };
+}
+
+/** Keep only the pages named by `spec` (1-based), in that order, to one file. */
+async function extractPages(inputPath, outputPath, spec, onProgress) {
+  const src = await loadPdf(inputPath, path.basename(inputPath));
+  const idx = pageIndices(spec, src.getPageCount());
+  if (!idx.length) throw new Error("That range selected no pages.");
+  onProgress?.(0.4);
+  const out = await pagesToNewDoc(src, idx);
+  await fs.promises.writeFile(outputPath, await out.save());
+  onProgress?.(1);
+  return { outputPath, pages: idx.length };
+}
+
+/** Remove the pages named by `spec`, keeping the rest, to one file. */
+async function deletePages(inputPath, outputPath, spec, onProgress) {
+  const src = await loadPdf(inputPath, path.basename(inputPath));
+  const total = src.getPageCount();
+  const keep = complementIndices(spec, total);
+  if (!keep.length) throw new Error("That would delete every page.");
+  if (keep.length === total) throw new Error("That range matched no pages to delete.");
+  onProgress?.(0.4);
+  const out = await pagesToNewDoc(src, keep);
+  await fs.promises.writeFile(outputPath, await out.save());
+  onProgress?.(1);
+  return { outputPath, pages: keep.length, removed: total - keep.length };
+}
+
+/**
+ * Rotate pages by a multiple of 90 degrees. `spec` limits which pages (default
+ * all). Rotation is relative to each page's existing rotation, so it composes.
+ */
+async function rotatePages(inputPath, outputPath, angle, spec, onProgress) {
+  const turn = ((Math.round(Number(angle) / 90) * 90) % 360 + 360) % 360;
+  if (turn === 0) throw new Error("Pick a rotation of 90, 180, or 270 degrees.");
+
+  const src = await loadPdf(inputPath, path.basename(inputPath));
+  const total = src.getPageCount();
+  const targets = new Set(parsePageSpec(spec || "", total));
+  const pages = src.getPages();
+
+  pages.forEach((page, i) => {
+    if (!targets.has(i + 1)) return;
+    const current = page.getRotation().angle || 0;
+    page.setRotation(degrees((current + turn) % 360));
+  });
+  onProgress?.(0.6);
+
+  // Re-save through a copy so metadata stays clean (see loadPdf's note).
+  src.setProducer("JDot Utilities");
+  await fs.promises.writeFile(outputPath, await src.save());
+  onProgress?.(1);
+  return { outputPath, pages: targets.size, angle: turn };
+}
+
+module.exports = {
+  mergePdfs,
+  pageCount,
+  inspect,
+  loadPdf,
+  splitPdf,
+  extractPages,
+  deletePages,
+  rotatePages,
+};

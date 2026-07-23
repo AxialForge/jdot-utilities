@@ -69,16 +69,21 @@ src/
     settings.js          Persists to userData/settings.json (sync read at boot)
     fsutil.js            Folder walker (top-level or recursive), Electron-free/testable
     ops.js               Runners for collect (N->1) and explode (1->N) kinds
+    pagespec.js          Parse "1-3,5,8-" page ranges (shared by split/delete/extract)
     htmlutil.js          HTML normalization: strip <style>/<script>, <base href>, text extraction
     pdfrender.js         HTML -> PDF via a POOL of offscreen Electron windows
-    pdfops.js            PDF merge/inspect via pdf-lib (encryption-aware)
+    pdfops.js            PDF merge/split/rotate/delete/extract/inspect via pdf-lib
+    imgpdf.js            Images -> one PDF (sharp normalizes, pdf-lib assembles)
     office.js            LibreOffice locator + headless convert (unique profile per call)
   tools/
     _template.js         Copy to add a tool (documents the contract + sidecar pattern)
     image-convert.js     sharp + heic-convert
     document-convert.js  marked/turndown/mammoth/html-to-docx + Electron printToPDF
     office-convert.js    Word/Sheets/Slides families (array export) via office.js
-    pdf-merge.js         Merge PDFs — first "collect" tool (was a hardcoded tab)
+    pdf-merge.js         Merge PDFs (collect)
+    pdf-split.js         Split PDF: per-page / every-N / ranges (explode)
+    pdf-pages.js         Rotate / Delete / Extract pages (three convert tools, one file)
+    images-to-pdf.js     Images -> one PDF (collect, ordered)
   renderer/index.html    Whole UI: Utilities / Settings, 3 themes, kind-aware stage
 docs/index.html          GitHub Pages landing page
 .github/workflows/build.yml  Windows CI: tag v* -> builds .exe -> attaches to release
@@ -114,7 +119,10 @@ async convert({ inputPath, outputPath, outputFormat, options, signal, onProgress
   html/md/txt/pdf/docx. Option: PDF page size.
 - **Office** (LibreOffice, three families): Word (docx/doc/odt/rtf), Spreadsheets
   (xlsx/xls/ods/csv), Presentations (pptx/ppt/odp) — each within-family + → pdf.
-- **Merge PDF** (`pdf-lib`): its own tab, not a registry tool — combine/reorder PDFs.
+- **PDF toolkit** (`pdf-lib`, all offline, auto-discovered tools):
+  - Merge PDFs (collect), Images → PDF (collect, sharp + pdf-lib)
+  - Split PDF (explode): per-page / every-N / custom ranges
+  - Rotate / Delete / Extract pages (convert, so they batch across files)
 
 ## Settings (`userData/settings.json`, via `settings:get`/`settings:set` IPC)
 `theme` (light|grey|black), `defaultOutputDir`, `pdfPageSize`, `concurrency`,
@@ -151,12 +159,22 @@ Three: **light**, **grey** (default), **black**. Driven by CSS custom properties
   usually omits HEIF decode.
 
 ## Roadmap (unbuilt)
-- `pandoc` sidecar → LaTeX, reStructuredText, AsciiDoc, Org, EPUB, ipynb…
+Needs a rasterizer/text-extractor decision (pdf-lib can't do either):
+- **PDF → images** (explode) and **PDF → text** (convert). Options: `pdfjs-dist`
+  (~2 MB, pure JS, does both) or reuse the bundled Chromium via `pdfrender`.
+- **PDF → single image montage**, **compress/downsample PDF**.
+
+Bigger engines (sidecar pattern in `_template.js` / `office.js`):
+- `pandoc` sidecar → LaTeX, reStructuredText, AsciiDoc, Org, EPUB, ipynb… (also
+  replaces `html-to-docx` + `mammoth` with real `.docx` I/O). **Chosen; deferred.**
 - `calibre` → ebooks (epub/mobi/azw3/fb2).
-- PDF toolkit: split, rotate, delete pages, pdf→images/text.
-- Add back **bmp/ico** for images.
 - Video/audio via bundled `ffmpeg` (wire the existing hardware-acceleration setting
   to `-hwaccel`).
+
+Smaller:
+- Add back **bmp/ico** for images; `ico` output.
+- **PDF metadata editor**, **encrypt/decrypt** (needs a crypto-capable lib; pdf-lib
+  writes but doesn't password-protect).
 - Publish `docs/` via GitHub Pages (Settings → Pages → main /docs).
 
 ## Release
