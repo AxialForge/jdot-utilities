@@ -62,6 +62,32 @@
       .drop.hot { border-color:var(--accent); background:var(--accent-dim); }
       .drop .row { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-top:8px; }
       .accept { font-size:11px; color:var(--muted); margin-top:8px; }
+
+      /* Home landing (Convert tab) */
+      .drop.home { padding:48px 18px; }
+      .home-drop-title { font-size:19px; font-weight:650; margin-bottom:4px; }
+      .home-hint { min-height:16px; font-size:12.5px; margin:10px 0 0; }
+      .home-cats-head { font-size:12px; margin:22px 0 8px; }
+      .home-cats { display:flex; flex-wrap:wrap; gap:8px; }
+      .home-cat { border:1px solid var(--line); background:var(--panel); color:var(--text);
+        border-radius:8px; padding:8px 13px; cursor:pointer; font-size:13px; font-family:inherit; transition:border-color .12s, background .12s; }
+      .home-cat:hover { border-color:var(--accent); background:var(--accent-dim); }
+
+      /* Catalog / All Tools */
+      .pane.wide { max-width:1000px; }
+      .cat-group { margin:0 0 22px; }
+      .cat-group-head { font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin:0 0 10px; }
+      .cat-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:12px; }
+      .card { border:1px solid var(--line); border-radius:10px; background:var(--panel); padding:14px; cursor:pointer;
+        display:flex; flex-direction:column; gap:7px; transition:border-color .12s, transform .12s, box-shadow .12s; }
+      .card:hover { border-color:var(--accent); transform:translateY(-1px); box-shadow:0 4px 14px rgba(0,0,0,.18); }
+      .card-name { font-weight:650; font-size:14px; display:flex; align-items:center; gap:8px; }
+      .card-kind { font-size:10px; letter-spacing:.05em; text-transform:uppercase; color:var(--on-accent);
+        background:var(--accent); border-radius:5px; padding:1px 6px; font-weight:600; }
+      .card-desc { font-size:12px; color:var(--muted); line-height:1.4; flex:1; }
+      .card-flow { font-size:11px; }
+      .card-flow .fmt { display:inline-block; background:var(--panel-2); border-radius:4px; padding:1px 5px; margin:1px; font-family:ui-monospace,Consolas,monospace; }
+      .card-flow .arrow { color:var(--accent); margin:0 4px; }
       .summary { display:flex; align-items:center; gap:12px; margin:14px 0 4px; font-size:12.5px; }
       .summary .grow { flex:1; }
       .bar { height:6px; background:var(--panel-2); border-radius:4px; overflow:hidden; margin:2px 0 10px; }
@@ -133,6 +159,7 @@
       <div class="tabs">
         <button class="tab active" data-tab="convert">Convert</button>
         <button class="tab" data-tab="pdf">PDF Tools</button>
+        <button class="tab" data-tab="catalog">All Tools</button>
         <button class="tab" data-tab="settings">Settings</button>
       </div>
       <span class="spacer"></span>
@@ -144,22 +171,39 @@
       <section data-view="stage">
         <nav class="rail"><div class="rail-head" id="railHead">Tools</div><div id="toolList"></div></nav>
         <div class="stage">
-          <h1 id="toolName">Pick a tool</h1>
-          <p class="desc" id="toolDesc">Choose a tool, then add files.</p>
-          <div class="drop" id="drop">
-            <div>Drop files here</div>
-            <div class="row">
-              <button class="btn small" id="addFiles">Add files</button>
-              <button class="btn small" id="addFolder">Add folder</button>
-              <button class="btn small" id="clearFiles">Clear</button>
+          <!-- HOME landing (Convert tab): drop anything, we route it. -->
+          <div id="homePanel" hidden>
+            <h1>Convert a file</h1>
+            <p class="desc">Drop a file below — Jdot Utilities detects the type and picks the right converter. Or choose a tool on the left.</p>
+            <div class="drop home" id="homeDrop">
+              <div class="home-drop-title">Drop a file here</div>
+              <div class="muted">We'll auto-detect the format and route it</div>
+              <div class="row"><button class="btn small" id="homeAddFiles">Choose a file…</button></div>
             </div>
-            <div class="accept mono" id="accept"></div>
+            <div class="home-hint muted" id="homeHint"></div>
+            <div class="home-cats-head muted">Or jump straight to:</div>
+            <div class="home-cats" id="homeCats"></div>
           </div>
-          <div class="summary"><span id="sumText" class="grow muted">No files yet.</span><span class="muted" id="pctText"></span></div>
-          <div class="bar"><i id="barFill"></i></div>
-          <div class="queue" id="queue"></div>
+
+          <!-- Normal per-tool workspace. -->
+          <div id="toolPanel">
+            <h1 id="toolName">Pick a tool</h1>
+            <p class="desc" id="toolDesc">Choose a tool, then add files.</p>
+            <div class="drop" id="drop">
+              <div>Drop files here</div>
+              <div class="row">
+                <button class="btn small" id="addFiles">Add files</button>
+                <button class="btn small" id="addFolder">Add folder</button>
+                <button class="btn small" id="clearFiles">Clear</button>
+              </div>
+              <div class="accept mono" id="accept"></div>
+            </div>
+            <div class="summary"><span id="sumText" class="grow muted">No files yet.</span><span class="muted" id="pctText"></span></div>
+            <div class="bar"><i id="barFill"></i></div>
+            <div class="queue" id="queue"></div>
+          </div>
         </div>
-        <aside class="controls">
+        <aside class="controls" id="controls">
           <div class="ctl-head">Output</div>
           <label class="field" id="formatField"><span class="field-label">Format</span><select id="formatSelect" class="mono"></select></label>
           <div id="optionFields"></div>
@@ -229,6 +273,14 @@
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      <section data-view="catalog" hidden>
+        <div class="pane wide">
+          <h1>All Tools</h1>
+          <p class="desc">Everything Jdot Utilities can do. Click a card to open it. All of it runs on your computer — nothing is uploaded.</p>
+          <div id="catalog"></div>
         </div>
       </section>
     </main>
@@ -309,27 +361,85 @@
       const sectionOf = (t)=> (t.category||"").toLowerCase()==="pdf" ? "pdf" : "convert";
       const toolsIn = (section)=> C.tools.filter((t)=> sectionOf(t)===section);
 
-      function showTab(name){
-        if(name==="settings"){
-          document.querySelectorAll("[data-view]").forEach((v)=> v.hidden = v.dataset.view!=="settings");
-          document.querySelectorAll(".tab").forEach((b)=> b.classList.toggle("active", b.dataset.tab==="settings"));
-          return;
-        }
-        // A utility section: show the shared stage, retarget the rail.
-        C.section = name;
-        document.querySelectorAll("[data-view]").forEach((v)=> v.hidden = v.dataset.view!=="stage");
+      function showView(view){
+        document.querySelectorAll("[data-view]").forEach((v)=> v.hidden = v.dataset.view!==view);
+      }
+      function markTab(name){
         document.querySelectorAll(".tab").forEach((b)=> b.classList.toggle("active", b.dataset.tab===name));
+      }
+
+      function showTab(name){
+        if(name==="settings"){ showView("settings"); markTab("settings"); return; }
+        if(name==="catalog"){ showView("catalog"); markTab("catalog"); renderCatalog(); return; }
+
+        // A utility section (convert | pdf): show the shared stage, retarget the rail.
+        C.section = name;
+        showView("stage"); markTab(name);
         $("railHead").textContent = name==="pdf" ? "PDF Tools" : "Convert";
         renderRail();
-        // Keep the current tool if it belongs to this section; otherwise pick the first.
-        if(!C.active || sectionOf(C.active)!==name){
-          const first = toolsIn(name)[0];
+        // Convert opens on Home (auto-detect drop). PDF has no home — pick a tool.
+        if(name==="convert" && (!C.active || sectionOf(C.active)!=="convert")){ enterHome(); }
+        else if(name==="pdf" && (!C.active || sectionOf(C.active)!=="pdf")){
+          const first = toolsIn("pdf")[0];
           if(first) selectTool(first.id); else clearStage();
+        } else {
+          // Current tool still belongs here — re-assert the correct panel.
+          if(C.home) enterHome(); else selectTool(C.active.id);
         }
       }
       document.querySelectorAll(".tab").forEach((b)=> b.onclick = ()=> showTab(b.dataset.tab));
 
+      // ── Home landing (Convert) ──────────────────────────────────
+      function enterHome(){
+        C.home = true; C.active = null; C.jobs = []; C.done = 0; C.result = null;
+        $("homePanel").hidden = false; $("toolPanel").hidden = true; $("controls").hidden = true;
+        $("homeHint").textContent = "";
+        document.querySelectorAll(".tool-btn").forEach((b)=> b.classList.toggle("active", b.dataset.id==="__home__"));
+        renderHomeCats();
+      }
+      function exitHome(){
+        if(!C.home) return;
+        C.home = false;
+        $("homePanel").hidden = true; $("toolPanel").hidden = false; $("controls").hidden = false;
+      }
+      function renderHomeCats(){
+        const wrap = $("homeCats"); wrap.innerHTML = "";
+        // One chip per convert tool — the quick path if you already know what you want.
+        toolsIn("convert").forEach((t)=>{
+          const b = document.createElement("button"); b.className="home-cat"; b.textContent = t.name;
+          b.onclick = ()=> openTool(t.id);
+          wrap.appendChild(b);
+        });
+      }
+
+      // Auto-detect: send dropped files to the best-matching tool, anywhere in the
+      // app. Prefer a converter in the section you're already on, then any match.
+      function routeFiles(paths){
+        if(!paths || !paths.length) return;
+        const ext = extOf(base(paths[0]));
+        const kindRank = { convert:0, collect:1, explode:2 };
+        const rank = (t)=> (sectionOf(t)===C.section ? 0 : 1) + (kindRank[t.kind||"convert"]) * 0.1;
+        const match = C.tools
+          .filter((t)=> t.inputFormats.includes(ext))
+          .sort((a,b)=> rank(a) - rank(b))[0];
+        if(!match){ $("homeHint").textContent = `Nothing here handles “.${ext}” files yet — check the All Tools tab.`; return; }
+        openTool(match.id, paths);
+      }
+
+      // Jump to a tool from anywhere (Home chips, auto-detect, catalog cards),
+      // switching to its section tab as needed.
+      function openTool(id, paths){
+        const t = C.tools.find((x)=>x.id===id); if(!t) return;
+        const sec = sectionOf(t);
+        C.section = sec; showView("stage"); markTab(sec);
+        $("railHead").textContent = sec==="pdf" ? "PDF Tools" : "Convert";
+        renderRail();
+        selectTool(id);                 // exits home, shows the tool workspace
+        if(paths && paths.length) addPaths(paths);
+      }
+
       function clearStage(){
+        exitHome();
         C.active=null; C.jobs=[]; C.done=0; C.result=null;
         $("toolName").textContent="No tools here"; $("toolDesc").textContent="";
         $("accept").textContent=""; renderQueue(); updateConvert();
@@ -339,14 +449,48 @@
         const tools = toolsIn(C.section);
         const byCat = {}; tools.forEach((t)=> (byCat[t.category] ||= []).push(t));
         const list = $("toolList"); list.innerHTML = "";
+        // The Convert rail leads with Home (the auto-detect landing).
+        if(C.section==="convert"){
+          const h=document.createElement("button"); h.className="tool-btn"; h.dataset.id="__home__";
+          h.textContent="🏠  Home"; if(C.home) h.classList.add("active");
+          h.onclick=()=>enterHome(); list.appendChild(h);
+        }
         // Within Convert, category headers still help; within PDF there's one category
         // so the header is redundant — show it only when there's more than one.
         const cats = Object.keys(byCat).sort();
         const showHeaders = cats.length > 1;
         cats.forEach((cat)=>{
           if(showHeaders){ const l=document.createElement("div"); l.className="cat-label"; l.textContent=cat; list.appendChild(l); }
-          byCat[cat].forEach((t)=>{ const b=document.createElement("button"); b.className="tool-btn"; b.textContent=t.name; b.dataset.id=t.id; if(C.active&&C.active.id===t.id) b.classList.add("active"); b.onclick=()=>selectTool(t.id); list.appendChild(b); });
+          byCat[cat].forEach((t)=>{ const b=document.createElement("button"); b.className="tool-btn"; b.textContent=t.name; b.dataset.id=t.id; if(!C.home&&C.active&&C.active.id===t.id) b.classList.add("active"); b.onclick=()=>openTool(t.id); list.appendChild(b); });
         });
+      }
+
+      // ── Catalog / All Tools ─────────────────────────────────────
+      function fmtChips(list){ return list.map((f)=>`<span class="fmt">${f}</span>`).join(""); }
+      function renderCatalog(){
+        const root = $("catalog"); root.innerHTML = "";
+        const order = ["Document","Image","Office","PDF","Other"];
+        const byCat = {}; C.tools.forEach((t)=> (byCat[t.category] ||= []).push(t));
+        const cats = Object.keys(byCat).sort((a,b)=>{
+          const ia=order.indexOf(a), ib=order.indexOf(b);
+          return (ia<0?99:ia)-(ib<0?99:ib) || a.localeCompare(b);
+        });
+        for(const cat of cats){
+          const group=document.createElement("div"); group.className="cat-group";
+          const head=document.createElement("div"); head.className="cat-group-head"; head.textContent=cat;
+          const grid=document.createElement("div"); grid.className="cat-grid";
+          for(const t of byCat[cat]){
+            const kind=(t.kind||"convert");
+            const card=document.createElement("div"); card.className="card"; card.title="Open "+t.name;
+            card.innerHTML =
+              `<div class="card-name">${t.name}<span class="card-kind">${kind}</span></div>`+
+              `<div class="card-desc">${t.description||""}</div>`+
+              `<div class="card-flow">${fmtChips(t.inputFormats)}<span class="arrow">&rarr;</span>${fmtChips(t.outputFormats)}</div>`;
+            card.onclick = ()=> openTool(t.id);
+            grid.appendChild(card);
+          }
+          group.appendChild(head); group.appendChild(grid); root.appendChild(group);
+        }
       }
       const kindOf = (t)=> (t && t.kind) || "convert";
       const isConvert = ()=> kindOf(C.active)==="convert";
@@ -356,6 +500,7 @@
       function selectTool(id){
         const next = C.tools.find((t)=>t.id===id);
         if(!next) return;
+        exitHome();
         // Switching utilities clears the queue — a PDF list for Merge is not a
         // sensible input list for the Image Converter.
         if(C.active && C.active.id!==id){ C.jobs=[]; C.done=0; C.result=null; }
@@ -526,13 +671,19 @@
       async function addFolderAction(){ if(hasApi) addPaths(await api.addFolderFiles()); else setStatus("Folder import runs in the installed app."); }
       $("addFiles").onclick=addFilesAction; $("addFolder").onclick=addFolderAction;
       $("clearFiles").onclick=()=>{ C.jobs=[]; C.done=0; C.result=null; $("runNote").textContent=""; $("barFill").style.width="0%"; renderQueue(); updateConvert(); };
-      $("fileInput").onchange=(e)=> addPaths([...e.target.files].map((f)=>f.name));
+      $("fileInput").onchange=(e)=>{ const p=[...e.target.files].map((f)=>f.name); C.home ? routeFiles(p) : addPaths(p); e.target.value=""; };
       $("formatSelect").onchange=renderQueue;
 
-      const drop=$("drop");
-      ["dragenter","dragover"].forEach((e)=> drop.addEventListener(e,(ev)=>{ ev.preventDefault(); drop.classList.add("hot"); }));
-      ["dragleave","drop"].forEach((e)=> drop.addEventListener(e,(ev)=>{ ev.preventDefault(); drop.classList.remove("hot"); }));
-      drop.addEventListener("drop",(ev)=>{ const paths=[]; for(const f of ev.dataTransfer.files){ const p=hasApi?api.pathForFile(f):f.name; if(p) paths.push(p); } addPaths(paths); });
+      const pathsFrom=(ev)=>{ const out=[]; for(const f of ev.dataTransfer.files){ const p=hasApi?api.pathForFile(f):f.name; if(p) out.push(p); } return out; };
+      function wireDrop(el, handler){
+        ["dragenter","dragover"].forEach((e)=> el.addEventListener(e,(ev)=>{ ev.preventDefault(); el.classList.add("hot"); }));
+        ["dragleave","drop"].forEach((e)=> el.addEventListener(e,(ev)=>{ ev.preventDefault(); el.classList.remove("hot"); }));
+        el.addEventListener("drop",(ev)=> handler(pathsFrom(ev)));
+      }
+      wireDrop($("drop"), addPaths);
+      // Home drop auto-detects the type and routes to the right tool.
+      wireDrop($("homeDrop"), routeFiles);
+      $("homeAddFiles").onclick=async()=>{ if(hasApi) routeFiles(await api.pickFiles()); else $("fileInput").click(); };
 
       // One entry point for all three kinds; the descriptor decides the shape.
       async function runActive(){
