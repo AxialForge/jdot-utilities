@@ -56,14 +56,22 @@ Writer → epub, Calc → tsv/html.
 
 ---
 
-## 3. Images (shipping; planned: bmp/ico/raw)
+## 3. Images (shipping; planned: raw)
 
-**Engine:** `sharp` (prebuilt native, offline) + `heic-convert` for iPhone photos.
+**Engine:** `sharp` (prebuilt native, offline) + `heic-convert` for iPhone photos
++ our own BMP/ICO codecs (`src/main/bmp.js`, `src/main/ico.js`).
 
-- **Inputs:** png, jpg, jpeg, webp, avif, tiff, gif, svg, heic, heif
-- **Outputs:** png, jpg, jpeg, webp, avif, tiff, gif
-- Any input → any output. SVG in is rasterized. Options: max width (resize), quality.
-- **Planned:** bmp (in/out), ico (out, multi-size), **raw** camera formats (cr2, nef, arw, dng) in.
+- **Inputs:** png, jpg, jpeg, webp, avif, tiff, gif, svg, heic, heif, bmp, ico
+- **Outputs:** png, jpg, jpeg, webp, avif, tiff, gif, bmp, ico
+- Any input → any output. SVG in is rasterized.
+- **Options:** resize preset (4K / 1080p / 720p / web / thumbnail), custom max
+  width (overrides the preset), quality, and the ICO size set.
+- **ICO out** writes a real multi-resolution Windows icon — 16/32/48/256 by
+  default, each frame a PNG — not a renamed image.
+- **Why hand-written codecs:** the bundled libvips has no BMP or ICO support in
+  either direction (there is no `magick` loader), so these can't be delegated to
+  sharp. Writing them keeps the app dependency-free and offline.
+- **Planned:** **raw** camera formats (cr2, nef, arw, dng) in.
 
 ---
 
@@ -83,17 +91,21 @@ The richest area — more operations than a format grid. All shipped items are `
 | **PDF → Images** | pdf → png/jpg per page (DPI, range) | pdfjs + canvas | Shipping |
 | **PDF → Text** | pdf → txt (text layer) | pdfjs | Shipping |
 | **OCR → Text** | scanned pdf / image → txt | `tesseract.js` (bundled eng model) | Shipping |
-| **Compress** | pdf → smaller pdf (screen/ebook/printer) | Ghostscript | Shipping |
+| **Shrink PDF (built-in)** | pdf → smaller pdf, **no engine needed** (pages become images) | pdfjs + sharp + pdf-lib | Shipping |
+| **Compress** | pdf → smaller pdf, text preserved (screen/ebook/printer) | Ghostscript | Shipping |
 | **PDF/A (archival)** | pdf → pdf/a-1b/2b | Ghostscript | Shipping |
 | **OCR → searchable PDF** | scanned pdf → pdf with a text layer | tesseract + pdf-lib | Planned |
-| **Watermark / stamp** | pdf → pdf | pdf-lib | Idea |
+| **Watermark / stamp** | pdf → pdf (diagonal text, any opacity) | pdf-lib | Shipping |
+| **Edit metadata** | pdf → pdf (title/author/subject/keywords) | pdf-lib | Shipping |
 | **Encrypt / decrypt** | pdf ↔ pdf (password) | needs crypto-capable lib / qpdf | Idea |
 | **Reorder / N-up** | pdf → pdf | pdf-lib | Idea |
-| **Edit metadata** | pdf → pdf (title/author/…) | pdf-lib | Idea |
 
-> **Compress / PDF-A** is one tool (`Compress / PDF-A`) whose "Output" preset picks
-> a compression level or a PDF/A conformance level — Ghostscript does both. It
-> auto-detects an installed Ghostscript or uses a bundled copy (`resources/bin/`).
+> **Two compressors, on purpose.** **Shrink PDF (built-in)** needs nothing
+> installed and re-renders each page as an image — great for scans, but the text
+> layer is lost. **Compress / PDF-A** uses Ghostscript to downsample images while
+> leaving text as text, and also writes archival PDF/A. Its "Output" preset picks
+> either a compression level or a PDF/A conformance level. It auto-detects an
+> installed Ghostscript or uses a bundled copy (`resources/bin/`).
 
 ---
 
@@ -145,8 +157,9 @@ High-value for printing: **stl ↔ 3mf ↔ obj ↔ ply ↔ gltf**.
 | Documents | JS + Electron | yes | — | Shipping |
 | Documents (expanded) | pandoc | yes | ~130 MB | Planned |
 | Office | LibreOffice | yes | installed (~400 MB) | Shipping |
-| Images | sharp + heic-convert | yes | prebuilt native | Shipping |
-| PDF toolkit (8 tools) | pdf-lib / pdfjs / canvas | yes | prebuilt native | Shipping |
+| Images | sharp + heic-convert + own bmp/ico | yes | prebuilt native | Shipping |
+| PDF toolkit (13 tools) | pdf-lib / pdfjs / canvas | yes | prebuilt native | Shipping |
+| Shrink PDF (no engine) | pdfjs + sharp + pdf-lib | yes | — | Shipping |
 | Compress + PDF/A | Ghostscript | yes | installed or ~30 MB bundled | Shipping |
 | OCR | tesseract.js | yes | ~4 MB model bundled | Shipping |
 | Data | pure JS | yes | — | Shipping |

@@ -13,6 +13,8 @@ contextBridge.exposeInMainWorld("api", {
   setSettings: (patch) => ipcRenderer.invoke("settings:set", patch),
   locateOffice: () => ipcRenderer.invoke("office:locate"),
   locateGhostscript: () => ipcRenderer.invoke("gs:locate"),
+  engineStatus: () => ipcRenderer.invoke("engines:status"),
+  openEngineDownload: (id) => ipcRenderer.invoke("engines:openDownload", id),
   pickOneFile: () => ipcRenderer.invoke("file:pickOne"),
 
   convert: (payload) => ipcRenderer.invoke("convert:run", payload),

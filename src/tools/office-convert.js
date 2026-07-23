@@ -10,6 +10,7 @@ function make(id, name, description, inputs, outputs) {
     id,
     name,
     category: "Office",
+    requiresEngine: "libreoffice",
     description,
     inputFormats: inputs,
     outputFormats: outputs,

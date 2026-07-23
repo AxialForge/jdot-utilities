@@ -13,6 +13,7 @@ const DEFAULTS = {
   recurseFolders: false, // "Add folder" pulls files from nested subfolders too
   libreOfficePath: null, // override path to soffice; null = auto-detect
   ghostscriptPath: null, // override path to gs; null = auto-detect (Compress / PDF-A)
+  hideEngineNotice: false, // dismissed the "optional engine missing" banner
 };
 
 let filePath = null; // resolved once we know userData

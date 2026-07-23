@@ -30,9 +30,11 @@ converter doesn't touch the UI.
 
 - **Fully offline & private.** No telemetry, no uploads, no accounts. Verifiable — there are no network calls in the code.
 - **Drop-and-go.** The Convert tab's **Home** landing auto-detects a dropped file's type and routes it to the right tool.
-- **Real PDF toolkit** — merge, split, rotate, delete/extract pages, images↔PDF, PDF→images, PDF→text, **OCR**, and **compress / PDF-A**.
+- **Real PDF toolkit** — merge, split, rotate, delete/extract pages, images↔PDF, PDF→images, PDF→text, **OCR**, watermark, and **two ways to compress**.
+- **Shrink a PDF with nothing installed** — the built-in shrinker needs no Ghostscript; ideal for scans and phone-photo PDFs.
 - **Document conversion** — Markdown, HTML, Word (`.docx`), plain text, PDF — any-to-any.
-- **Image conversion** — PNG, JPG, WebP, AVIF, TIFF, GIF, plus HEIC/HEIF (iPhone photos), with resize and quality.
+- **Image conversion** — PNG, JPG, WebP, AVIF, TIFF, GIF, BMP, **Windows ICO**, plus HEIC/HEIF (iPhone photos), with resize presets and quality.
+- **Tells you what's missing** — if an optional engine isn't installed, the app says so on launch and on the tool, instead of failing after you press Convert.
 - **Data conversion** — JSON, YAML, CSV, TSV, XML, any-to-any.
 - **Office** (via installed LibreOffice) — Word, spreadsheet, and presentation families, each to PDF.
 - **All Tools tab** — every capability as a simple card: what it does and its formats, one click to open.
@@ -44,7 +46,7 @@ converter doesn't touch the UI.
 | Tool | Category | Converts |
 |------|----------|----------|
 | Document Converter | Document | md · html · docx · txt → html · md · txt · pdf · docx |
-| Image Converter | Image | png · jpg · webp · avif · tiff · gif · svg · heic · heif → png · jpg · webp · avif · tiff · gif |
+| Image Converter | Image | png · jpg · webp · avif · tiff · gif · svg · heic · heif · bmp · ico → png · jpg · webp · avif · tiff · gif · bmp · ico |
 | Data Converter | Data | json · yaml · csv · tsv · xml (any → any) |
 | Word / Spreadsheets / Presentations | Office | docx·doc·odt·rtf / xlsx·xls·ods·csv / pptx·ppt·odp — each → pdf *(needs LibreOffice)* |
 | Merge PDFs | PDF | many PDFs → one |
@@ -54,7 +56,8 @@ converter doesn't touch the UI.
 | PDF → Images | PDF | pdf → png / jpg per page |
 | PDF → Text | PDF | pdf → txt (text layer) |
 | OCR → Text | PDF | scanned pdf / image → txt *(offline OCR)* |
-| Compress / PDF-A | PDF | pdf → smaller pdf, or archival PDF/A *(needs Ghostscript)* |
+| Shrink PDF (built-in) | PDF | pdf → smaller pdf, **no extra software** (pages become images) |
+| Compress / PDF-A | PDF | pdf → smaller pdf keeping text, or archival PDF/A *(needs Ghostscript)* |
 | Watermark PDF | PDF | stamp diagonal text on every page |
 | Edit PDF Info | PDF | set title / author / subject / keywords |
 
@@ -69,10 +72,13 @@ Release notes are in [CHANGELOG.md](CHANGELOG.md).
 [Releases](https://github.com/AxialForge/jdot-utilities/releases) page — either the
 installer or the single-file portable build. No setup, no dependencies.
 
-Two tools use an external engine (both auto-detected; path configurable in Settings):
+Two tools use an external engine (both auto-detected; path configurable in
+Settings). The app checks for them on launch and tells you if either is missing,
+rather than failing mid-conversion:
 - **Office** conversions need [LibreOffice](https://www.libreoffice.org/).
 - **Compress / PDF-A** needs [Ghostscript](https://www.ghostscript.com/) (or a
-  bundled copy — see below).
+  bundled copy — see below). For plain compression you don't need it at all —
+  **Shrink PDF (built-in)** works with nothing installed.
 
 Everything else — including **OCR**, which ships its own English model — is
 self-contained and works with no setup.
@@ -135,7 +141,7 @@ enable the `extraResources` entry in `electron-builder.yml`.
 ### Tests
 
 ```bash
-npm test                          # ~143 unit/integration tests (plain Node)
+npm test                          # 184 unit/integration tests (plain Node)
 npx electron test/electron-pdf.js # PDF-output checks (needs Chromium)
 npx electron test/electron-ops.js # collect/explode + OCR tools end-to-end
 ```
@@ -198,9 +204,16 @@ inside the app.
 
 ## Roadmap
 
-Next up: **PDF/A + compression** via a bundled Ghostscript sidecar, then **OCR**
-for scanned PDFs, then **audio/video** via `ffmpeg` and **more document formats**
-via `pandoc`. The complete plan, with the engine and bundle cost for each, is in
+Shipped so far: the PDF toolkit, OCR, data conversion, compression (both with and
+without Ghostscript), and BMP/ICO. Next up, each a focused block because each
+adds a large binary or a new engine:
+
+- **Bundle LibreOffice** so Office conversions need no install (~400 MB).
+- **Audio/video** via a bundled `ffmpeg` (~80 MB).
+- **Auto-update** via GitHub Releases.
+- **More document formats** via a `pandoc` sidecar (LaTeX, EPUB, AsciiDoc…).
+
+The complete plan, with the engine and bundle cost for each, is in
 **[FORMATS.md](FORMATS.md)**.
 
 ---

@@ -25,6 +25,7 @@
 
 const fs = require("node:fs");
 const path = require("node:path");
+const { isEngine } = require("./engines");
 
 const TOOLS_DIR = path.join(__dirname, "..", "tools");
 const KINDS = ["convert", "collect", "explode"];
@@ -114,6 +115,11 @@ function describe(tool) {
     minInputs: Number.isInteger(tool.minInputs) ? tool.minInputs : kind === "collect" ? 2 : 1,
     // Default filename stem the save dialog offers (collect only).
     defaultName: typeof tool.defaultName === "string" ? tool.defaultName : null,
+    // Optional id of an external engine this tool shells out to ("libreoffice",
+    // "ghostscript"). The UI warns before the user picks files rather than
+    // letting the conversion fail at the end. Unknown ids are dropped so a typo
+    // can't produce a warning that never resolves.
+    requiresEngine: isEngine(tool.requiresEngine) ? tool.requiresEngine : null,
     options: tool.options || [],
   };
 }

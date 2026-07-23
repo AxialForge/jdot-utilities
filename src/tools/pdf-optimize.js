@@ -20,6 +20,7 @@ module.exports = {
   name: "Compress / PDF-A",
   kind: "convert",
   category: "PDF",
+  requiresEngine: "ghostscript",
   description: "Shrink a PDF, or convert it to archival PDF/A. Requires Ghostscript (bundled, or installed).",
 
   inputFormats: ["pdf"],

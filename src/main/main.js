@@ -108,6 +108,17 @@ ipcMain.handle("office:locate", () => locateSoffice(settings.readSync().libreOff
 // Report whether Ghostscript can be found (Compress / PDF-A).
 ipcMain.handle("gs:locate", () => require("./gs").locateGs(settings.readSync().ghostscriptPath));
 
+// Status of every optional external engine — drives the first-run notice and the
+// per-tool warning, so a missing engine is visible before any work is started.
+ipcMain.handle("engines:status", () => require("./engines").engineStatus(settings.readSync()));
+
+// Open an engine's download page in the real browser. The app itself still makes
+// no network calls; this hands the URL to the OS.
+ipcMain.handle("engines:openDownload", (_e, id) => {
+  const engine = require("./engines").ENGINES[id];
+  if (engine) shell.openExternal(engine.url);
+});
+
 // Pick a single file (used to choose the LibreOffice binary).
 ipcMain.handle("file:pickOne", async () => {
   const res = await dialog.showOpenDialog(mainWindow, { properties: ["openFile"] });

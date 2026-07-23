@@ -19,13 +19,14 @@ npm run build:win      # NSIS installer + portable .exe -> dist/
 npm run build:portable # single-file portable .exe
 ```
 ```bash
-npm test               # node:test suite (53 tests, plain node — no Electron)
+npm test               # node:test suite (184 tests, plain node — no Electron)
 npm run test:pdf       # Electron-hosted PDF smoke test (5 checks)
 ```
+Requires **Node 22+** (the test script's `node --test` glob needs 21+).
 Two layers, because the PDF path needs Chromium:
-- `npm test` (~70 cases) covers `htmlutil`, `convert`, `ops`, `pdfops`, the
-  registry (incl. kinds/validation), and every non-PDF `document-convert` path.
-  Runs in plain node.
+- `npm test` (184 cases) covers `htmlutil`, `convert`, `ops`, `pdfops`,
+  `pdfshrink`, `bmp`/`ico`, `engines`, the registry (incl. kinds/validation),
+  and every non-PDF `document-convert` path. Runs in plain node.
 - Electron-hosted smoke tests (run directly): `npx electron test/electron-pdf.js`
   (PDF output, pooled windows, `<base href>`, orientation) and
   `npx electron test/electron-ops.js` (collect/explode via the discovered tools).
@@ -88,6 +89,9 @@ src/
     dataconv.js          JSON/YAML/CSV/TSV/XML conversion (pure JS)
     gs.js                Ghostscript locator + compress / PDF-A
     office.js            LibreOffice locator + headless convert (unique profile per call)
+    engines.js           The optional external engines in one place (status + download URLs)
+    pdfshrink.js         Ghostscript-free PDF compression (pdfjs render -> JPEG -> pdf-lib)
+    bmp.js  ico.js       Hand-written BMP and ICO codecs (libvips supports neither)
   tools/
     _template.js         Copy to add a tool (documents the contract + sidecar pattern)
     image-convert.js     sharp + heic-convert
@@ -130,8 +134,10 @@ async convert({ inputPath, outputPath, outputFormat, options, signal, onProgress
   **bundled sidecar binary** (pattern documented at the bottom of `_template.js`).
 
 ## Current tools
-- **Image** (`sharp` + `heic-convert`): in png/jpg/jpeg/webp/avif/tiff/gif/svg/heic/heif
-  → out png/jpg/jpeg/webp/avif/tiff/gif. Options: max width, quality. (No bmp/ico.)
+- **Image** (`sharp` + `heic-convert` + our own `bmp.js`/`ico.js`): in
+  png/jpg/jpeg/webp/avif/tiff/gif/svg/heic/heif/bmp/ico → out
+  png/jpg/jpeg/webp/avif/tiff/gif/bmp/ico. Options: resize preset, custom max
+  width, quality, ICO size set.
 - **Document** (pure JS + Electron PDF): md/markdown/html/htm/docx/txt ↔
   html/md/txt/pdf/docx. Option: PDF page size.
 - **Office** (LibreOffice, three families): Word (docx/doc/odt/rtf), Spreadsheets
@@ -146,7 +152,8 @@ async convert({ inputPath, outputPath, outputFormat, options, signal, onProgress
 ## Settings (`userData/settings.json`, via `settings:get`/`settings:set` IPC)
 `theme` (light|grey|black), `defaultOutputDir`, `pdfPageSize`, `concurrency`,
 `hardwareAcceleration` (auto|on|off, read at boot), `recurseFolders`,
-`libreOfficePath` (override; null = auto-detect).
+`libreOfficePath` / `ghostscriptPath` (overrides; null = auto-detect),
+`hideEngineNotice` (dismissed the missing-engine banner).
 
 ## Themes
 Three: **light**, **grey** (default), **black**. Driven by CSS custom properties in
@@ -170,6 +177,24 @@ To retheme, edit those token blocks only — all accent colour is confined to th
 - **Ghostscript is optional.** `gs.js` resolves a bundled binary (`resources/bin/`),
   then an installed one, then the `ghostscriptPath` setting. Absent → the tool
   throws a clear message; its tests skip. Compress/PDF-A is `pdf-optimize`.
+  `pdf-shrink` covers plain compression with **nothing installed**.
+- **A tool that shells out must declare `requiresEngine`** ("libreoffice" /
+  "ghostscript"). `engines.js` owns the list; `registry.describe()` drops unknown
+  ids. That declaration is the *only* thing driving the startup banner and the
+  per-tool warning — never hardcode an engine check in the renderer.
+- **`sharp` here has no BMP or ICO support, in either direction** (no `magick`
+  loader — verified against the prebuilt binary, don't assume the docs). Both
+  formats route through `bmp.js` / `ico.js`. An ICO frame can be a PNG *or* a
+  headerless BMP whose stored height is doubled by a trailing 1-bit mask;
+  `ico.js` handles both.
+- **`pdfshrink.js` encodes every page with sharp, never `canvas.toBuffer`.**
+  Mixing the two means two JPEG encoders whose quality scales disagree, so the
+  same `quality` produced very different files depending on the greyscale
+  toggle — and greyscale could come out *larger* than colour.
+- **Select options must apply their declared `default`.** `renderOptions` sets
+  `inp.value = opt.default`; without it a `select` silently lands on its first
+  choice, which is how Compress/PDF-A ended up defaulting to `screen` rather
+  than the intended `ebook`.
 - **Third native/asset deps:** `sharp`, `@napi-rs/canvas`, and the tesseract wasm
   are all `asarUnpack`. Bumping any needs a Windows build so the win32 binary matches.
 - **PDF output needs Chromium** (Electron `printToPDF`) — it can't run in plain
@@ -194,10 +219,13 @@ To retheme, edit those token blocks only — all accent colour is confined to th
 
 ## Roadmap (unbuilt)
 Smaller PDF follow-ons now that the engine is in place:
-- **PDF → single image montage/contact sheet**, **compress/downsample PDF**.
-- **OCR** for scanned PDFs (tesseract.js or a sidecar) — PDF → Text flags these.
+- **PDF → single image montage/contact sheet**, **reorder pages**, **N-up**.
 
 Bigger engines (sidecar pattern in `_template.js` / `office.js`):
+- **Bundle LibreOffice** (~400 MB) so Office needs no install: `office.js` should
+  prefer a bundled path, then the detected one. Needs a CI download step, and
+  can't be verified locally without LibreOffice present.
+- **Auto-update** via `electron-updater` against GitHub Releases.
 - `pandoc` sidecar → LaTeX, reStructuredText, AsciiDoc, Org, EPUB, ipynb… (also
   replaces `html-to-docx` + `mammoth` with real `.docx` I/O). **Chosen; deferred.**
 - `calibre` → ebooks (epub/mobi/azw3/fb2).
@@ -205,9 +233,8 @@ Bigger engines (sidecar pattern in `_template.js` / `office.js`):
   to `-hwaccel`).
 
 Smaller:
-- Add back **bmp/ico** for images; `ico` output.
-- **PDF metadata editor**, **encrypt/decrypt** (needs a crypto-capable lib; pdf-lib
-  writes but doesn't password-protect).
+- **encrypt/decrypt** (needs a crypto-capable lib; pdf-lib writes but doesn't
+  password-protect).
 - Publish `docs/` via GitHub Pages (Settings → Pages → main /docs).
 
 ## Release

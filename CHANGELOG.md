@@ -2,6 +2,52 @@
 
 All notable changes to Jdot Utilities. Dates are YYYY-MM-DD.
 
+## 0.7.0 — 2026-07-22
+
+Three additions that all pull in the same direction: **fewer reasons to install
+anything else**, and **saying so clearly when something is missing**.
+
+### Shrink PDF (built-in) — compression with no Ghostscript
+- A new PDF tool that makes files smaller using nothing but what ships in the
+  app. Best on the files people actually need to shrink: scans, phone-photo
+  PDFs, image-heavy exports.
+- Four presets from "Smallest (72 DPI, grey)" to "High quality (200 DPI)".
+- The trade-off is stated in the tool itself: pages become images, so text stops
+  being selectable. **Compress / PDF-A** (Ghostscript) remains the choice when
+  the text layer has to survive.
+- If rasterizing would make a file *bigger* — which happens with text-only PDFs
+  — it keeps the original instead. On by default, and switchable.
+
+### BMP and Windows ICO
+- The Image Converter now reads **and** writes `bmp` and `ico`.
+- ICO output writes a real multi-resolution icon (16 / 32 / 48 / 256 by default),
+  so it works as an actual Windows app icon rather than a renamed PNG.
+- Both codecs are written from scratch in the app: the bundled image library has
+  no BMP or ICO support at all, and this avoids adding a dependency for it.
+- Added **resize presets** (4K / 1080p / 720p / web / thumbnail) next to the
+  existing custom width, which still overrides them.
+
+### Missing-engine check
+- Two tools need external software (Office needs LibreOffice, Compress / PDF-A
+  needs Ghostscript). Previously that only surfaced as a failure *after* picking
+  files and pressing Convert.
+- The app now checks at startup and shows one dismissible banner if either is
+  absent, and marks the affected tool itself with a note and a download link.
+- A tool declares its own requirement (`requiresEngine`), so this stays
+  data-driven — no list to maintain as tools are added.
+
+### Fixed
+- **Dropdown options ignored their declared default** and always selected the
+  first choice. This meant **Compress / PDF-A silently defaulted to "screen"**
+  (the most aggressive, lowest-quality setting) instead of the intended
+  "balanced (ebook)".
+- Greyscale PDF shrinking encoded each page as JPEG **twice**, which softened
+  the image and could make the output larger than the colour version. Both paths
+  now share one encoder, so the quality setting means the same thing either way.
+
+### Tests
+- 184 tests, up from 150.
+
 ## 0.6.0 — 2026-07-22
 
 - **Watermark PDF** — stamp diagonal text (DRAFT, CONFIDENTIAL, …) across every

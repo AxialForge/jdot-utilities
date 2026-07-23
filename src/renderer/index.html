@@ -46,6 +46,17 @@
         border:1px solid var(--line); border-radius:5px; padding:1px 6px; margin-left:2px;
         font-family:ui-monospace,"Cascadia Code",Consolas,monospace; }
 
+      /* Optional-engine notices: the startup banner and the per-tool warning.
+         Informational, not alarming — every affected tool has a working
+         alternative or is simply unavailable until the engine is installed. */
+      .notice { display:flex; align-items:center; gap:12px; padding:9px 16px; font-size:12.5px;
+        background:var(--panel-2); border-bottom:1px solid var(--line); }
+      .notice .grow { flex:1; min-width:0; }
+      .notice .sub { color:var(--muted); }
+      .notice .acts { display:flex; gap:6px; flex-shrink:0; }
+      .notice.inline { border:1px solid var(--line); border-left:3px solid var(--warn);
+        border-radius:8px; margin:0 0 12px; padding:10px 12px; background:var(--panel); }
+
       main { flex:1; min-height:0; display:flex; }
       [data-view] { flex:1; min-height:0; display:flex; }
       [hidden] { display:none !important; }
@@ -170,6 +181,16 @@
       <span class="badge" id="previewBadge" hidden>Preview</span>
     </div>
 
+    <!-- Shown once at startup if an optional engine is missing, so a tool that
+         can't work is known about before any files are chosen. -->
+    <div class="notice" id="engineNotice" hidden>
+      <span class="grow" id="engineNoticeText"></span>
+      <span class="acts">
+        <button class="btn small" id="engineNoticeSettings">Open Settings</button>
+        <button class="btn small" id="engineNoticeDismiss">Dismiss</button>
+      </span>
+    </div>
+
     <main>
       <section data-view="stage">
         <nav class="rail"><div class="rail-head" id="railHead">Tools</div><div id="toolList"></div></nav>
@@ -192,6 +213,11 @@
           <div id="toolPanel">
             <h1 id="toolName">Pick a tool</h1>
             <p class="desc" id="toolDesc">Choose a tool, then add files.</p>
+            <!-- Warns before any files are added when this tool's engine is absent. -->
+            <div class="notice inline" id="engineWarn" hidden>
+              <span class="grow" id="engineWarnText"></span>
+              <span class="acts"><button class="btn small" id="engineWarnGet">Get it</button></span>
+            </div>
             <div class="drop" id="drop">
               <div>Drop files here</div>
               <div class="row">
@@ -347,7 +373,12 @@
           description:"Read text from scanned PDFs and images using offline OCR (English). Outputs plain text.",
           inputFormats:["pdf","png","jpg","jpeg","tiff","tif","bmp","webp"], outputFormats:["txt"], options:[
             {key:"dpi",label:"Scan resolution for PDF pages (DPI)",type:"number",min:72,max:400,default:200}] },
-        { id:"pdf-optimize", name:"Compress / PDF-A", kind:"convert", category:"PDF",
+        { id:"pdf-shrink", name:"Shrink PDF (built-in)", kind:"convert", category:"PDF",
+          description:"Make a PDF smaller with no extra software installed. Best for scans and image-heavy files. Pages become images, so text is no longer selectable — use Compress / PDF-A to keep text.",
+          inputFormats:["pdf"], outputFormats:["pdf"], options:[
+            {key:"preset",label:"Amount",type:"select",choices:["Smallest (72 DPI, grey)","Small (100 DPI)","Balanced (150 DPI)","High quality (200 DPI)"],default:"Balanced (150 DPI)"},
+            {key:"skipIfLarger",label:"Keep the original if shrinking makes it bigger",type:"boolean",default:true}] },
+        { id:"pdf-optimize", name:"Compress / PDF-A", kind:"convert", category:"PDF", requiresEngine:"ghostscript",
           description:"Shrink a PDF, or convert it to archival PDF/A. Requires Ghostscript (bundled, or installed).",
           inputFormats:["pdf"], outputFormats:["pdf"], options:[
             {key:"preset",label:"Output",type:"select",choices:["Compress — small (screen)","Compress — balanced (ebook)","Compress — high quality (printer)","Archive — PDF/A-2b","Archive — PDF/A-1b (strict)"],default:"Compress — balanced (ebook)"}] },
@@ -367,24 +398,26 @@
           description:"Convert between JSON, YAML, CSV, TSV, and XML. Flat formats (CSV/TSV) flatten nested data.",
           inputFormats:["json","yaml","yml","csv","tsv","xml"], outputFormats:["json","yaml","csv","tsv","xml"],
           excludePairs:{ json:["json"], yaml:["yaml"], yml:["yaml"], csv:["csv"], tsv:["tsv"], xml:["xml"] }, options:[] },
-        { id:"image-convert", name:"Image Converter", category:"Image", description:"Convert between image formats (incl. WebP, AVIF, HEIC), with optional resize and quality.",
-          inputFormats:["png","jpg","jpeg","webp","avif","tiff","gif","svg","heic","heif"], outputFormats:["png","jpg","jpeg","webp","avif","tiff","gif"],
-          options:[{key:"maxWidth",label:"Max width (px, 0 = keep original)",type:"number",min:0,max:40000,default:0},
-                   {key:"quality",label:"Quality (JPEG/WebP/AVIF)",type:"number",min:1,max:100,default:90}] },
+        { id:"image-convert", name:"Image Converter", category:"Image", description:"Convert between image formats (incl. WebP, AVIF, HEIC, BMP, and Windows ICO), with optional resize and quality.",
+          inputFormats:["png","jpg","jpeg","webp","avif","tiff","gif","svg","heic","heif","bmp","ico"], outputFormats:["png","jpg","jpeg","webp","avif","tiff","gif","bmp","ico"],
+          options:[{key:"resize",label:"Resize",type:"select",choices:["Original size","3840 px (4K)","1920 px (1080p)","1280 px (720p)","800 px (web)","400 px (thumbnail)"],default:"Original size"},
+                   {key:"maxWidth",label:"Custom max width (px, 0 = use preset above)",type:"number",min:0,max:40000,default:0},
+                   {key:"quality",label:"Quality (JPEG/WebP/AVIF)",type:"number",min:1,max:100,default:90},
+                   {key:"icoSizes",label:"Icon sizes (ICO output only)",type:"select",choices:["Standard (16, 32, 48, 256)","All sizes (16 - 256)","Small only (16, 32)","256 only"],default:"Standard (16, 32, 48, 256)"}] },
         { id:"document-convert", name:"Document Converter", category:"Document", description:"Convert between Markdown, HTML, Word (.docx), plain text, and PDF.",
           inputFormats:["md","markdown","html","htm","docx","txt"], outputFormats:["html","md","txt","pdf","docx"],
           excludePairs:{ md:["md"], html:["html"], txt:["txt"], docx:["docx"] },
           options:[{key:"pageSize",label:"PDF page size",type:"select",choices:["Letter","A4","Legal","Tabloid"],default:"Letter"},
                    {key:"landscape",label:"PDF landscape",type:"boolean",default:false}] },
-        { id:"office-word", name:"Word Documents", category:"Office", description:"Convert Word/OpenDocument text and to PDF. Requires LibreOffice.",
+        { id:"office-word", name:"Word Documents", category:"Office", requiresEngine:"libreoffice", description:"Convert Word/OpenDocument text and to PDF. Requires LibreOffice.",
           inputFormats:["docx","doc","odt","rtf"], outputFormats:["pdf","docx","odt","rtf"], options:[] },
-        { id:"office-sheet", name:"Spreadsheets", category:"Office", description:"Convert spreadsheets and to PDF. Requires LibreOffice.",
+        { id:"office-sheet", name:"Spreadsheets", category:"Office", requiresEngine:"libreoffice", description:"Convert spreadsheets and to PDF. Requires LibreOffice.",
           inputFormats:["xlsx","xls","ods","csv"], outputFormats:["pdf","xlsx","ods","csv"], options:[] },
-        { id:"office-slides", name:"Presentations", category:"Office", description:"Convert presentations and to PDF. Requires LibreOffice.",
+        { id:"office-slides", name:"Presentations", category:"Office", requiresEngine:"libreoffice", description:"Convert presentations and to PDF. Requires LibreOffice.",
           inputFormats:["pptx","ppt","odp"], outputFormats:["pdf","pptx","odp"], options:[] },
       ];
 
-      let SETTINGS = { theme:"grey", defaultOutputDir:null, pdfPageSize:"Letter", concurrency:4, hardwareAcceleration:"auto", recurseFolders:false, libreOfficePath:null };
+      let SETTINGS = { theme:"grey", defaultOutputDir:null, pdfPageSize:"Letter", concurrency:4, hardwareAcceleration:"auto", recurseFolders:false, libreOfficePath:null, ghostscriptPath:null, hideEngineNotice:false };
       const applyTheme = (t) => document.documentElement.setAttribute("data-theme", t);
       async function saveSettings(patch){ SETTINGS = { ...SETTINGS, ...patch }; if (hasApi) SETTINGS = await api.setSettings(patch); }
 
@@ -555,6 +588,7 @@
 
         refreshFormats();
         renderOptions(C.active.options||[]); renderQueue(); updateConvert();
+        paintEngineWarn();
       }
       function renderOptions(opts){
         const w=$("optionFields"); w.innerHTML="";
@@ -562,7 +596,12 @@
           const lab=document.createElement("label"); lab.className="field";
           const s=document.createElement("span"); s.className="field-label"; s.textContent=opt.label||opt.key; lab.appendChild(s);
           let inp;
-          if (opt.type==="select"){ inp=document.createElement("select"); (opt.choices||[]).forEach((c)=>{ const o=document.createElement("option"); o.value=c; o.textContent=c; inp.appendChild(o); }); if (opt.key==="pageSize") inp.value=SETTINGS.pdfPageSize; }
+          if (opt.type==="select"){ inp=document.createElement("select"); (opt.choices||[]).forEach((c)=>{ const o=document.createElement("option"); o.value=c; o.textContent=c; inp.appendChild(o); });
+            // Honour the descriptor's declared default. Without this a select
+            // silently lands on its first choice, which is not the same thing —
+            // Compress/PDF-A declares "ebook" but was defaulting to "screen".
+            if (opt.default!=null) inp.value=opt.default;
+            if (opt.key==="pageSize") inp.value=SETTINGS.pdfPageSize; }
           else if (opt.type==="boolean"){ inp=document.createElement("input"); inp.type="checkbox"; inp.checked=!!opt.default; inp.style.width="auto"; inp.style.justifySelf="start"; }
           else { inp=document.createElement("input"); inp.type=opt.type==="number"?"number":"text"; if(opt.min!=null)inp.min=opt.min; if(opt.max!=null)inp.max=opt.max; if(opt.default!=null)inp.value=opt.default; }
           inp.dataset.key=opt.key; inp.dataset.type=opt.type||"text"; lab.appendChild(inp); w.appendChild(lab);
@@ -818,8 +857,8 @@
         const p=await api.locateOffice();
         el.textContent = p ? ("Found: "+p) : "Not found — install LibreOffice, or choose the soffice binary.";
       }
-      $("chooseLo").onclick=async()=>{ if(!hasApi){ setStatus("Runs in the installed app."); return; } const p=await api.pickOneFile(); if(p){ await saveSettings({libreOfficePath:p}); refreshOffice(); } };
-      $("resetLo").onclick=async()=>{ await saveSettings({libreOfficePath:null}); refreshOffice(); };
+      $("chooseLo").onclick=async()=>{ if(!hasApi){ setStatus("Runs in the installed app."); return; } const p=await api.pickOneFile(); if(p){ await saveSettings({libreOfficePath:p}); refreshOffice(); refreshEngines(); } };
+      $("resetLo").onclick=async()=>{ await saveSettings({libreOfficePath:null}); refreshOffice(); refreshEngines(); };
 
       async function refreshGs(){
         const el=$("gsStatus"); if(!el) return;
@@ -827,8 +866,62 @@
         const p=await api.locateGhostscript();
         el.textContent = p ? ("Found: "+p) : "Not found — install Ghostscript, or choose the gs binary.";
       }
-      $("chooseGs").onclick=async()=>{ if(!hasApi){ setStatus("Runs in the installed app."); return; } const p=await api.pickOneFile(); if(p){ await saveSettings({ghostscriptPath:p}); refreshGs(); } };
-      $("resetGs").onclick=async()=>{ await saveSettings({ghostscriptPath:null}); refreshGs(); };
+      $("chooseGs").onclick=async()=>{ if(!hasApi){ setStatus("Runs in the installed app."); return; } const p=await api.pickOneFile(); if(p){ await saveSettings({ghostscriptPath:p}); refreshGs(); refreshEngines(); } };
+      $("resetGs").onclick=async()=>{ await saveSettings({ghostscriptPath:null}); refreshGs(); refreshEngines(); };
+
+      // ── Optional engines ───────────────────────────────────────
+      // Two tools shell out to something external (Office -> LibreOffice,
+      // Compress/PDF-A -> Ghostscript); everything else is self-contained.
+      // Rather than let those fail only after files are queued and Convert is
+      // pressed, check at startup and warn on the tool itself.
+      let ENGINES = [];
+      const engineById = (id)=> ENGINES.find((e)=>e.id===id) || null;
+
+      // Build "<b>bold</b> <span class=sub>rest</span>" without innerHTML, so
+      // engine names and paths can never be interpreted as markup.
+      function fillNotice(el, bold, sub){
+        el.textContent = "";
+        const b=document.createElement("b"); b.textContent=bold;
+        const s=document.createElement("span"); s.className="sub"; s.textContent=" "+sub;
+        el.appendChild(b); el.appendChild(s);
+      }
+
+      async function refreshEngines(){
+        if(!hasApi){ ENGINES=[]; return; }
+        try { ENGINES = await api.engineStatus(); } catch { ENGINES = []; }
+        paintEngineNotice(); paintEngineWarn();
+      }
+
+      function paintEngineNotice(){
+        const missing = ENGINES.filter((e)=>!e.found);
+        if(!missing.length || SETTINGS.hideEngineNotice){ $("engineNotice").hidden=true; return; }
+        fillNotice($("engineNoticeText"),
+          "Optional: " + missing.map((e)=>e.name).join(" and ") + " not found.",
+          "Everything else works offline as normal. Affects: " + missing.map((e)=>e.needed).join("; ") + ".");
+        $("engineNotice").hidden=false;
+      }
+
+      function paintEngineWarn(){
+        const box=$("engineWarn");
+        const eng = C.active && C.active.requiresEngine ? engineById(C.active.requiresEngine) : null;
+        if(!eng || eng.found){ box.hidden=true; return; }
+        fillNotice($("engineWarnText"), eng.name + " is not installed.",
+          "This tool needs it to run." + (eng.alternative ? " " + eng.alternative : "") +
+          " Already have it? Set the path in Settings.");
+        $("engineWarnGet").dataset.engine = eng.id;
+        box.hidden=false;
+      }
+
+      $("engineNoticeSettings").onclick = ()=> showTab("settings");
+      $("engineNoticeDismiss").onclick = async()=>{
+        SETTINGS.hideEngineNotice = true;
+        $("engineNotice").hidden = true;
+        if(hasApi) await saveSettings({hideEngineNotice:true});
+      };
+      $("engineWarnGet").onclick = ()=>{
+        const id=$("engineWarnGet").dataset.engine;
+        if(hasApi && id) api.openEngineDownload(id);
+      };
 
       function setStatus(t){ $("status").textContent=t; }
 
@@ -838,6 +931,9 @@
         applyTheme(SETTINGS.theme); paintSettings(); refreshOffice(); refreshGs(); setSaveLine(); updateSummary();
         // Open on the Convert section (its first tool selected by showTab).
         showTab("convert");
+        // After the first paint: a missing engine is worth saying up front, but
+        // never worth delaying startup for.
+        refreshEngines();
       })();
     </script>
   </body>
