@@ -55,6 +55,8 @@ converter doesn't touch the UI.
 | PDF → Text | PDF | pdf → txt (text layer) |
 | OCR → Text | PDF | scanned pdf / image → txt *(offline OCR)* |
 | Compress / PDF-A | PDF | pdf → smaller pdf, or archival PDF/A *(needs Ghostscript)* |
+| Watermark PDF | PDF | stamp diagonal text on every page |
+| Edit PDF Info | PDF | set title / author / subject / keywords |
 
 **Full capability list — current and planned — is in [FORMATS.md](FORMATS.md).**
 Release notes are in [CHANGELOG.md](CHANGELOG.md).

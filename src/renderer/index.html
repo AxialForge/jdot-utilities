@@ -351,6 +351,18 @@
           description:"Shrink a PDF, or convert it to archival PDF/A. Requires Ghostscript (bundled, or installed).",
           inputFormats:["pdf"], outputFormats:["pdf"], options:[
             {key:"preset",label:"Output",type:"select",choices:["Compress — small (screen)","Compress — balanced (ebook)","Compress — high quality (printer)","Archive — PDF/A-2b","Archive — PDF/A-1b (strict)"],default:"Compress — balanced (ebook)"}] },
+        { id:"pdf-watermark", name:"Watermark PDF", kind:"convert", category:"PDF",
+          description:"Stamp diagonal text (e.g. DRAFT, CONFIDENTIAL) across every page.",
+          inputFormats:["pdf"], outputFormats:["pdf"], options:[
+            {key:"text",label:"Watermark text",type:"text",default:"DRAFT"},
+            {key:"opacity",label:"Opacity (0.02 – 1)",type:"number",min:0.02,max:1,default:0.18}] },
+        { id:"pdf-metadata", name:"Edit PDF Info", kind:"convert", category:"PDF",
+          description:"Set a PDF's document title, author, subject, and keywords.",
+          inputFormats:["pdf"], outputFormats:["pdf"], options:[
+            {key:"title",label:"Title",type:"text",default:""},
+            {key:"author",label:"Author",type:"text",default:""},
+            {key:"subject",label:"Subject",type:"text",default:""},
+            {key:"keywords",label:"Keywords (comma-separated)",type:"text",default:""}] },
         { id:"data-convert", name:"Data Converter", kind:"convert", category:"Data",
           description:"Convert between JSON, YAML, CSV, TSV, and XML. Flat formats (CSV/TSV) flatten nested data.",
           inputFormats:["json","yaml","yml","csv","tsv","xml"], outputFormats:["json","yaml","csv","tsv","xml"],

@@ -2,7 +2,7 @@
 
 const fs = require("node:fs");
 const path = require("node:path");
-const { PDFDocument, PDFName, degrees } = require("pdf-lib");
+const { PDFDocument, PDFName, degrees, rgb, StandardFonts } = require("pdf-lib");
 const { parsePageSpec, pageIndices, complementIndices } = require("./pagespec");
 
 /**
@@ -228,6 +228,79 @@ async function rotatePages(inputPath, outputPath, angle, spec, onProgress) {
   return { outputPath, pages: targets.size, angle: turn };
 }
 
+/**
+ * Stamp a diagonal text watermark across every page. Grey, semi-transparent, so
+ * it reads as a watermark rather than covering content.
+ */
+async function watermarkPdf(inputPath, outputPath, { text = "DRAFT", opacity = 0.18, fontSize = 0 } = {}, onProgress) {
+  const label = String(text || "").trim();
+  if (!label) throw new Error("Enter watermark text.");
+  const src = await loadPdf(inputPath, path.basename(inputPath));
+  const font = await src.embedFont(StandardFonts.HelveticaBold);
+  const op = Math.min(1, Math.max(0.02, Number(opacity) || 0.18));
+  const pages = src.getPages();
+
+  pages.forEach((page) => {
+    const { width, height } = page.getSize();
+    // Auto-size to ~70% of the diagonal unless the caller fixed a size.
+    let size = Number(fontSize) > 0 ? Number(fontSize) : 48;
+    if (!(Number(fontSize) > 0)) {
+      const diag = Math.hypot(width, height);
+      while (font.widthOfTextAtSize(label, size) < diag * 0.7 && size < 200) size += 2;
+    }
+    const tw = font.widthOfTextAtSize(label, size);
+    // Centre the 45°-rotated baseline on the page.
+    const rad = Math.PI / 4;
+    page.drawText(label, {
+      x: (width - tw * Math.cos(rad)) / 2,
+      y: (height - tw * Math.sin(rad)) / 2,
+      size,
+      font,
+      color: rgb(0.5, 0.5, 0.5),
+      rotate: degrees(45),
+      opacity: op,
+    });
+  });
+  onProgress?.(0.7);
+  src.setProducer("Jdot Utilities");
+  await fs.promises.writeFile(outputPath, await src.save());
+  onProgress?.(1);
+  return { outputPath, pages: pages.length };
+}
+
+/**
+ * Read a PDF's document metadata (for showing current values before editing).
+ */
+async function readMetadata(inputPath) {
+  const doc = await loadPdf(inputPath, path.basename(inputPath));
+  const kw = doc.getKeywords();
+  return {
+    title: doc.getTitle() || "",
+    author: doc.getAuthor() || "",
+    subject: doc.getSubject() || "",
+    keywords: Array.isArray(kw) ? kw.join(", ") : kw || "",
+  };
+}
+
+/**
+ * Set document metadata (title/author/subject/keywords). Only the fields you pass
+ * are changed; the rest are left as-is. An empty string clears a field.
+ */
+async function setMetadata(inputPath, outputPath, meta = {}) {
+  const doc = await loadPdf(inputPath, path.basename(inputPath));
+  if (meta.title != null) doc.setTitle(String(meta.title));
+  if (meta.author != null) doc.setAuthor(String(meta.author));
+  if (meta.subject != null) doc.setSubject(String(meta.subject));
+  if (meta.keywords != null) {
+    const list = String(meta.keywords).split(",").map((s) => s.trim()).filter(Boolean);
+    doc.setKeywords(list);
+  }
+  doc.setProducer("Jdot Utilities");
+  doc.setModificationDate(new Date());
+  await fs.promises.writeFile(outputPath, await doc.save());
+  return { outputPath };
+}
+
 module.exports = {
   mergePdfs,
   pageCount,
@@ -237,4 +310,7 @@ module.exports = {
   extractPages,
   deletePages,
   rotatePages,
+  watermarkPdf,
+  readMetadata,
+  setMetadata,
 };

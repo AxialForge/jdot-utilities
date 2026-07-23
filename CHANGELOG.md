@@ -2,6 +2,13 @@
 
 All notable changes to Jdot Utilities. Dates are YYYY-MM-DD.
 
+## 0.6.0 — 2026-07-22
+
+- **Watermark PDF** — stamp diagonal text (DRAFT, CONFIDENTIAL, …) across every
+  page, with adjustable opacity. Pure pdf-lib, offline.
+- **Edit PDF Info** — set a PDF's title, author, subject, and keywords.
+- The PDF Tools tab is now 12 tools.
+
 ## 0.5.1 — 2026-07-22
 
 - Removed all emojis from the app and the docs — plain, professional text throughout.
