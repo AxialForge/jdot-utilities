@@ -2,6 +2,22 @@
 
 All notable changes to Jdot Utilities. Dates are YYYY-MM-DD.
 
+## 0.7.1 — 2026-07-23
+
+A reliability fix for machines where the app opened but froze.
+
+### Fix: window opens but nothing is clickable (GPU / hardware acceleration)
+- On some Windows machines — outdated or broken GPU drivers, virtual machines, or
+  remote-desktop sessions — an accelerated window could open but never become
+  interactive. The app now detects a GPU-process crash, a renderer crash, or a
+  window that hangs at startup, and automatically restarts itself with hardware
+  acceleration turned off so you get a working window instead of a dead one.
+- Added a no-UI escape hatch for a frozen first run: launch with `--safe-mode`
+  (or set the `JDOT_DISABLE_GPU=1` environment variable) to force software
+  rendering without having to reach the Settings screen. The choice is remembered,
+  and you can switch it back under **Settings → Performance → Hardware
+  acceleration**.
+
 ## 0.7.0 — 2026-07-22
 
 Three additions that all pull in the same direction: **fewer reasons to install

@@ -87,6 +87,21 @@ self-contained and works with no setup.
 > SmartScreen may warn on first run ("More info → Run anyway"). Signing is wired
 > into the build (see [Code signing](#code-signing)) and just needs a certificate.
 
+### The window opens but nothing is clickable
+
+On some machines — outdated or broken GPU drivers, virtual machines, or remote
+desktop sessions — an accelerated window can open but never become interactive.
+The app now detects a GPU-process crash or a startup hang and automatically
+restarts itself with hardware acceleration turned off. If it ever stays frozen,
+force software rendering yourself, no UI needed:
+
+- Launch once with **`--safe-mode`** (e.g. `"Jdot Utilities.exe" --safe-mode`), or
+- set the environment variable **`JDOT_DISABLE_GPU=1`** before launching.
+
+Either one starts the app in software-rendering mode and remembers the choice, so
+later launches stay that way. You can flip it back under **Settings → Performance
+→ Hardware acceleration**.
+
 ---
 
 ## Run from source (development)

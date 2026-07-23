@@ -10,16 +10,46 @@ const { locateSoffice } = require("./office");
 const pdfrender = require("./pdfrender");
 const settings = require("./settings");
 const config = require("../config");
+const { shouldDisableGpu, isPersistentSafeMode } = require("./gpu");
 
 // ── Boot-time settings: decide hardware acceleration before app is ready ──
+// Must happen before app is ready. Besides the stored setting, honor a no-UI
+// escape hatch (--safe-mode / --disable-gpu / JDOT_DISABLE_GPU) so a user whose
+// accelerated window is frozen can still launch a working, software-rendered one
+// without needing to reach the (unreachable) Settings screen.
 settings.setPath(app.getPath("userData"));
 const boot = settings.readSync();
-if (boot.hardwareAcceleration === "off") {
+if (shouldDisableGpu({ setting: boot.hardwareAcceleration, argv: process.argv, env: process.env })) {
   app.disableHardwareAcceleration();
+  // Remember an explicit escape-hatch launch so the next normal start stays safe.
+  if (boot.hardwareAcceleration !== "off" &&
+      isPersistentSafeMode({ argv: process.argv, env: process.env })) {
+    settings.write({ hardwareAcceleration: "off" });
+  }
 }
 
 let tools = new Map();
 let mainWindow = null;
+
+// ── GPU failure recovery ───────────────────────────────────────
+// A crashing GPU process (or a window that hangs the instant it opens) is the
+// classic cause of "the app launches but nothing is clickable". When it happens,
+// fall back to software rendering permanently and relaunch, so the user gets a
+// working window instead of a dead one. Guarded so it can't loop: it only fires
+// while acceleration is still on, and only once.
+const STARTUP_GRACE_MS = 12000;
+let launchedAt = Date.now();
+let recovering = false;
+
+function fallbackToSoftwareRendering(reason) {
+  if (recovering) return;
+  if (settings.readSync().hardwareAcceleration === "off") return; // already software
+  recovering = true;
+  console.error(`GPU/renderer problem (${reason}); disabling hardware acceleration and restarting.`);
+  settings.write({ hardwareAcceleration: "off" });
+  app.relaunch();
+  app.exit(0);
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -38,14 +68,37 @@ function createWindow() {
   });
   mainWindow.setMenuBarVisibility(false);
   mainWindow.loadFile(path.join(__dirname, "..", "renderer", "index.html"));
+
+  // A renderer that dies (GPU/compositor fault) or hangs right after opening is
+  // the frozen-window symptom — recover into software rendering. The startup
+  // grace window keeps a later, legitimate busy renderer from triggering it.
+  mainWindow.webContents.on("render-process-gone", (_e, details) => {
+    if (details.reason !== "clean-exit") {
+      fallbackToSoftwareRendering("renderer-" + details.reason);
+    }
+  });
+  mainWindow.on("unresponsive", () => {
+    if (Date.now() - launchedAt < STARTUP_GRACE_MS) {
+      fallbackToSoftwareRendering("unresponsive-at-startup");
+    }
+  });
 }
 
 app.whenReady().then(() => {
   tools = loadTools();
+  launchedAt = Date.now();
   createWindow();
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
+});
+
+// A GPU-process crash is the most direct signal that acceleration is unusable on
+// this machine; fall back to software rendering and relaunch.
+app.on("child-process-gone", (_e, details) => {
+  if (details.type === "GPU" && details.reason !== "clean-exit") {
+    fallbackToSoftwareRendering("gpu-" + details.reason);
+  }
 });
 
 app.on("window-all-closed", () => {
