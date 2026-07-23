@@ -106,6 +106,37 @@ app.whenReady().then(async () => {
     assert.strictEqual(res.pages, 2);
   });
 
+  await check("pdf-to-images runs through runExplode under Electron", async () => {
+    const d = fs.mkdtempSync(path.join(os.tmpdir(), "jdot-eops-"));
+    const src = await makePdf(path.join(d, "book.pdf"), 3);
+    const res = await runExplode({
+      tool: tools.get("pdf-to-images"),
+      file: src,
+      outputDir: path.join(d, "out"),
+      options: { format: "png", dpi: 72 },
+    });
+    assert.ok(res.ok, JSON.stringify(res));
+    assert.strictEqual(res.outputs.length, 3);
+    for (const p of res.outputs) {
+      assert.strictEqual(fs.readFileSync(p).subarray(0, 8).toString("hex"), "89504e470d0a1a0a", "not a PNG");
+    }
+  });
+
+  await check("pdf-to-text runs through runBatch under Electron", async () => {
+    const d = fs.mkdtempSync(path.join(os.tmpdir(), "jdot-eops-"));
+    const doc = await PDFDocument.create();
+    const font = await doc.embedFont(StandardFonts.Helvetica);
+    doc.addPage([300, 200]).drawText("Findable text here.", { x: 20, y: 100, size: 16, font });
+    const src = path.join(d, "words.pdf");
+    await fs.promises.writeFile(src, await doc.save());
+
+    const out = await runBatch({
+      tool: tools.get("pdf-to-text"), files: [src], outputFormat: "txt", outputDir: d, options: {},
+    });
+    assert.ok(out[0].ok, JSON.stringify(out[0]));
+    assert.ok(fs.readFileSync(out[0].outputPath, "utf8").includes("Findable text here"));
+  });
+
   const failures = results.filter((r) => r[0] === "FAIL");
   console.log("\n── Electron ops smoke test ──");
   for (const [status, name, msg] of results) {

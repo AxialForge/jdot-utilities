@@ -81,6 +81,9 @@ src/
     pdfrender.js         HTML -> PDF via a POOL of offscreen Electron windows
     pdfops.js            PDF merge/split/rotate/delete/extract/inspect via pdf-lib
     imgpdf.js            Images -> one PDF (sharp normalizes, pdf-lib assembles)
+    pdfjs.js             Shared pdfjs-dist loader (dynamic import of the ESM build)
+    pdftext.js           PDF -> text (pdfjs text layer; flags scanned/image-only PDFs)
+    pdfraster.js         PDF -> images (pdfjs render onto @napi-rs/canvas)
     office.js            LibreOffice locator + headless convert (unique profile per call)
   tools/
     _template.js         Copy to add a tool (documents the contract + sidecar pattern)
@@ -91,6 +94,8 @@ src/
     pdf-split.js         Split PDF: per-page / every-N / ranges (explode)
     pdf-pages.js         Rotate / Delete / Extract pages (three convert tools, one file)
     images-to-pdf.js     Images -> one PDF (collect, ordered)
+    pdf-to-images.js     PDF -> PNG/JPG, one per page (explode)
+    pdf-to-text.js       PDF -> txt (convert)
   renderer/index.html    Whole UI: Convert / PDF Tools / Settings, kind-aware stage
   renderer/assets/       Brand: logo.png (topbar), wordmark.png, logo-32.png
 build/icon.ico           App/window icon (electron-builder buildResources)
@@ -128,10 +133,12 @@ async convert({ inputPath, outputPath, outputFormat, options, signal, onProgress
   html/md/txt/pdf/docx. Option: PDF page size.
 - **Office** (LibreOffice, three families): Word (docx/doc/odt/rtf), Spreadsheets
   (xlsx/xls/ods/csv), Presentations (pptx/ppt/odp) — each within-family + → pdf.
-- **PDF toolkit** (`pdf-lib`, all offline, auto-discovered tools):
+- **PDF toolkit** (offline, auto-discovered tools):
   - Merge PDFs (collect), Images → PDF (collect, sharp + pdf-lib)
   - Split PDF (explode): per-page / every-N / custom ranges
   - Rotate / Delete / Extract pages (convert, so they batch across files)
+  - PDF → Images (explode, pdfjs + `@napi-rs/canvas`): PNG/JPG per page, DPI + range
+  - PDF → Text (convert, pdfjs text layer; flags scanned PDFs that need OCR)
 
 ## Settings (`userData/settings.json`, via `settings:get`/`settings:set` IPC)
 `theme` (light|grey|black), `defaultOutputDir`, `pdfPageSize`, `concurrency`,
@@ -145,9 +152,14 @@ Three: **light**, **grey** (default), **black**. Driven by CSS custom properties
 To retheme, edit those token blocks only — all accent colour is confined to them.
 
 ## Gotchas / constraints
-- **sharp is native.** It's in `asarUnpack` (electron-builder.yml). Build the `.exe`
-  **on Windows** (or the Windows CI runner) so the correct `@img/sharp-win32-x64`
-  binary is fetched. Cross-building from Linux needs the win32 optional dep forced.
+- **Two native modules: `sharp` and `@napi-rs/canvas`.** Both ship prebuilt
+  binaries and are in `asarUnpack` (electron-builder.yml). Build the `.exe` **on
+  Windows** (or the Windows CI runner) so the correct win32-x64 binaries are
+  fetched. Cross-building from Linux needs the win32 optional deps forced.
+- **pdfjs-dist v6 is ESM-only.** It's pulled in with a cached dynamic `import()`
+  from `src/main/pdfjs.js`; don't `require()` it. Its font/cMap "urls" must use
+  forward slashes with a trailing `/` (pdfjs rejects a Windows `\`) — `pdfjs.js`
+  handles that. Text extraction is pure JS; rendering needs `@napi-rs/canvas`.
 - **PDF output needs Chromium** (Electron `printToPDF`) — it can't run in plain
   `node`, so `pdfrender.js` is lazy-required and only `npm run test:pdf` covers it.
 - **Anything that turns HTML into another format must call
@@ -169,10 +181,9 @@ To retheme, edit those token blocks only — all accent colour is confined to th
   usually omits HEIF decode.
 
 ## Roadmap (unbuilt)
-Needs a rasterizer/text-extractor decision (pdf-lib can't do either):
-- **PDF → images** (explode) and **PDF → text** (convert). Options: `pdfjs-dist`
-  (~2 MB, pure JS, does both) or reuse the bundled Chromium via `pdfrender`.
-- **PDF → single image montage**, **compress/downsample PDF**.
+Smaller PDF follow-ons now that the engine is in place:
+- **PDF → single image montage/contact sheet**, **compress/downsample PDF**.
+- **OCR** for scanned PDFs (tesseract.js or a sidecar) — PDF → Text flags these.
 
 Bigger engines (sidecar pattern in `_template.js` / `office.js`):
 - `pandoc` sidecar → LaTeX, reStructuredText, AsciiDoc, Org, EPUB, ipynb… (also

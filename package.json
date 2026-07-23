@@ -14,11 +14,13 @@
     "build:portable": "electron-builder --win portable"
   },
   "dependencies": {
+    "@napi-rs/canvas": "^1.0.2",
     "heic-convert": "^2.1.0",
     "html-to-docx": "^1.8.0",
     "mammoth": "^1.8.0",
     "marked": "^4.3.0",
     "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^6.1.200",
     "sharp": "^0.35.3",
     "turndown": "^7.2.0"
   },

@@ -18,6 +18,9 @@ files:
 asarUnpack:
   - "**/node_modules/sharp/**"
   - "**/node_modules/@img/**"
+  # @napi-rs/canvas ships a prebuilt .node (PDF -> Images rendering); like sharp
+  # it can't be loaded from inside the asar archive.
+  - "**/node_modules/@napi-rs/**"
 
 # When you add tools that shell out to bundled binaries (ffmpeg, etc.),
 # drop them in resources/bin/ and uncomment this so they ship with the app:
