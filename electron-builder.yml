@@ -21,12 +21,22 @@ asarUnpack:
   # @napi-rs/canvas ships a prebuilt .node (PDF -> Images rendering); like sharp
   # it can't be loaded from inside the asar archive.
   - "**/node_modules/@napi-rs/**"
+  # tesseract.js loads a wasm core and spawns a worker script from disk (OCR);
+  # both must live outside the asar to resolve.
+  - "**/node_modules/tesseract.js/**"
+  - "**/node_modules/tesseract.js-core/**"
 
-# When you add tools that shell out to bundled binaries (ffmpeg, etc.),
-# drop them in resources/bin/ and uncomment this so they ship with the app:
-# extraResources:
-#   - from: resources/bin
-#     to: bin
+extraResources:
+  # OCR English model (offline — no CDN fetch). ocr.js reads it from resources/tessdata.
+  - from: resources/tessdata
+    to: tessdata
+  # A bundled Ghostscript (Compress / PDF-A) would go here; gs.js also detects an
+  # installed copy, so this is optional at package time:
+  # - from: resources/bin
+  #   to: bin
+
+# To bundle Ghostscript into the .exe (so Compress / PDF-A works with no separate
+# install), drop gswin64c.exe + its DLLs in resources/bin/ and add the entry above.
 
 win:
   target:

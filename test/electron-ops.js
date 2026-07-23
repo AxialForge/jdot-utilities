@@ -137,6 +137,26 @@ app.whenReady().then(async () => {
     assert.ok(fs.readFileSync(out[0].outputPath, "utf8").includes("Findable text here"));
   });
 
+  await check("ocr-text reads an image under Electron (worker spawns)", async () => {
+    const { createCanvas } = require("@napi-rs/canvas");
+    const d = fs.mkdtempSync(path.join(os.tmpdir(), "jdot-eops-"));
+    const canvas = createCanvas(600, 120);
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, 600, 120);
+    ctx.fillStyle = "#000"; ctx.font = "40px Arial";
+    ctx.fillText("Electron OCR 7788", 20, 70);
+    const png = path.join(d, "t.png");
+    fs.writeFileSync(png, canvas.toBuffer("image/png"));
+
+    const out = await runBatch({
+      tool: tools.get("ocr-text"), files: [png], outputFormat: "txt", outputDir: d, options: {},
+    });
+    assert.ok(out[0].ok, JSON.stringify(out[0]));
+    const text = fs.readFileSync(out[0].outputPath, "utf8");
+    assert.ok(/7788/.test(text), "OCR text: " + JSON.stringify(text));
+    await require("../src/main/ocr").shutdown();
+  });
+
   const failures = results.filter((r) => r[0] === "FAIL");
   console.log("\n── Electron ops smoke test ──");
   for (const [status, name, msg] of results) {

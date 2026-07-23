@@ -340,6 +340,10 @@
           description:"Extract the text layer from a PDF. (Scanned/image-only PDFs need OCR.)",
           inputFormats:["pdf"], outputFormats:["txt"], options:[
             {key:"pageBreaks",label:"Insert a page break between pages",type:"boolean",default:false}] },
+        { id:"ocr-text", name:"OCR → Text", kind:"convert", category:"PDF",
+          description:"Read text from scanned PDFs and images using offline OCR (English). Outputs plain text.",
+          inputFormats:["pdf","png","jpg","jpeg","tiff","tif","bmp","webp"], outputFormats:["txt"], options:[
+            {key:"dpi",label:"Scan resolution for PDF pages (DPI)",type:"number",min:72,max:400,default:200}] },
         { id:"pdf-optimize", name:"Compress / PDF-A", kind:"convert", category:"PDF",
           description:"Shrink a PDF, or convert it to archival PDF/A. Requires Ghostscript (bundled, or installed).",
           inputFormats:["pdf"], outputFormats:["pdf"], options:[

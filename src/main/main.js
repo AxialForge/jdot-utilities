@@ -52,10 +52,11 @@ app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
 });
 
-// Tear down the pooled offscreen render windows so they don't keep us alive.
+// Tear down the pooled render windows and the OCR worker so they don't keep us alive.
 app.on("before-quit", () => {
   for (const job of jobs.values()) job.abort();
   pdfrender.shutdown();
+  require("./ocr").shutdown();
 });
 
 // ── Info & tools ──────────────────────────────────────────────
