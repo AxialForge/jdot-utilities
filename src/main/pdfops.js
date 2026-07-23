@@ -90,7 +90,7 @@ async function mergePdfs(inputPaths, outputPath, onProgress, { signal } = {}) {
     warnings.push("Bookmarks from the source files were not carried over.");
   }
 
-  out.setProducer("JDot Utilities");
+  out.setProducer("Jdot Utilities");
   out.setCreationDate(new Date());
 
   const merged = await out.save();
@@ -127,7 +127,7 @@ async function pagesToNewDoc(src, indices) {
   const out = await PDFDocument.create();
   const copied = await out.copyPages(src, indices);
   copied.forEach((p) => out.addPage(p));
-  out.setProducer("JDot Utilities");
+  out.setProducer("Jdot Utilities");
   out.setCreationDate(new Date());
   return out;
 }
@@ -222,7 +222,7 @@ async function rotatePages(inputPath, outputPath, angle, spec, onProgress) {
   onProgress?.(0.6);
 
   // Re-save through a copy so metadata stays clean (see loadPdf's note).
-  src.setProducer("JDot Utilities");
+  src.setProducer("Jdot Utilities");
   await fs.promises.writeFile(outputPath, await src.save());
   onProgress?.(1);
   return { outputPath, pages: targets.size, angle: turn };

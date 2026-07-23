@@ -1,6 +1,6 @@
-# JDot Utilities — project guide for Claude Code
+# Jdot Utilities — project guide for Claude Code
 
-JDot Utilities is a **local, offline desktop file converter** (Electron). No network, no
+Jdot Utilities is a **local, offline desktop file converter** (Electron). No network, no
 account, no upload — files never leave the machine. Packaged as a Windows `.exe`.
 Built around a **tool registry** so adding a converter is one self-describing file.
 
@@ -43,6 +43,13 @@ Two layers, because the PDF path needs Chromium:
 - **Tools/utilities** (`src/tools/`): each file exports a descriptor (or an array
   of them). The registry auto-loads every `*.js` that isn't prefixed `_`.
 
+### Two utility tabs (Convert / PDF Tools)
+The top bar has two utility sections plus Settings. Membership is data-driven:
+a tool with `category === "PDF"` shows under **PDF Tools**, everything else under
+**Convert**. Both share one stage; switching tabs just retargets the rail
+(`showTab`/`renderRail` in `index.html`). Add a PDF tool and it lands in the PDF
+tab automatically — no wiring.
+
 ### Utility kinds (the core abstraction)
 A descriptor declares a `kind` that says how files flow. This is what lets a PDF
 toolkit (merge, split, extract…) be one file each instead of hardcoded tabs:
@@ -84,7 +91,9 @@ src/
     pdf-split.js         Split PDF: per-page / every-N / ranges (explode)
     pdf-pages.js         Rotate / Delete / Extract pages (three convert tools, one file)
     images-to-pdf.js     Images -> one PDF (collect, ordered)
-  renderer/index.html    Whole UI: Utilities / Settings, 3 themes, kind-aware stage
+  renderer/index.html    Whole UI: Convert / PDF Tools / Settings, kind-aware stage
+  renderer/assets/       Brand: logo.png (topbar), wordmark.png, logo-32.png
+build/icon.ico           App/window icon (electron-builder buildResources)
 docs/index.html          GitHub Pages landing page
 .github/workflows/build.yml  Windows CI: tag v* -> builds .exe -> attaches to release
 ```

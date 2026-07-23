@@ -1,4 +1,4 @@
-// LibreOffice sidecar. JDot Utilities doesn't bundle LibreOffice (it's ~400 MB); instead
+// LibreOffice sidecar. Jdot Utilities doesn't bundle LibreOffice (it's ~400 MB); instead
 // it uses an installed copy. Each conversion runs headless with a unique user
 // profile so batches can run several at once without clobbering each other.
 // Still fully offline — LibreOffice makes no network calls here.

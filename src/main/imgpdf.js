@@ -74,7 +74,7 @@ async function imagesToPdf(inputPaths, outputPath, options = {}, onProgress, opt
 
   if (doc.getPageCount() === 0) throw new Error("None of the images could be read.");
 
-  doc.setProducer("JDot Utilities");
+  doc.setProducer("Jdot Utilities");
   doc.setCreationDate(new Date());
   await fs.promises.writeFile(outputPath, await doc.save());
   return { outputPath, pages: doc.getPageCount(), warnings };

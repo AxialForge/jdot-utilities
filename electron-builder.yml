@@ -1,5 +1,5 @@
 appId: com.jdot.utilities
-productName: JDot Utilities
+productName: Jdot Utilities
 copyright: Copyright © 2026
 
 directories:
@@ -9,6 +9,7 @@ directories:
 files:
   - src/**/*
   - package.json
+  - build/icon.ico # also bundled so the runtime BrowserWindow icon resolves
   - "!**/*.map"
 
 # sharp ships native binaries that can't run from inside the asar archive,
@@ -37,4 +38,4 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
-  shortcutName: JDot Utilities
+  shortcutName: Jdot Utilities

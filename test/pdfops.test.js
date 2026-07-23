@@ -60,7 +60,7 @@ test("merge sets a producer and returns no spurious warnings for plain PDFs", as
   // updateMetadata:false is required to read what is actually on disk — pdf-lib's
   // constructor restamps Producer with its own name otherwise.
   const doc = await PDFDocument.load(await fs.promises.readFile(out), { updateMetadata: false });
-  assert.strictEqual(doc.getProducer(), "JDot Utilities");
+  assert.strictEqual(doc.getProducer(), "Jdot Utilities");
 });
 
 test("opening a PDF does not rewrite the author's metadata", async () => {

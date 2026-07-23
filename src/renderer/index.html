@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>JDot Utilities</title>
+    <title>Jdot Utilities</title>
     <style>
       /* ── Theme tokens ─────────────────────────────────────── */
       :root, [data-theme="grey"] {
@@ -34,8 +34,7 @@
 
       .topbar { display:flex; align-items:center; gap:16px; padding:10px 16px; border-bottom:1px solid var(--line); background:var(--panel); }
       .brand { display:flex; align-items:center; gap:9px; font-weight:700; letter-spacing:.02em; }
-      .mark { width:14px; height:14px; background:var(--accent);
-        clip-path:polygon(0 60%,70% 60%,70% 40%,100% 40%,85% 75%,30% 75%,30% 100%,0 100%); }
+      .mark { width:20px; height:20px; object-fit:contain; display:block; }
       .tabs { display:flex; gap:4px; margin-left:8px; }
       .tab { border:0; background:transparent; color:var(--muted); padding:7px 14px; border-radius:7px; cursor:pointer; font-size:13.5px; font-family:inherit; }
       .tab:hover { color:var(--text); background:var(--panel-2); }
@@ -130,9 +129,10 @@
   </head>
   <body>
     <div class="topbar">
-      <span class="brand"><span class="mark"></span> <span id="appName">JDot Utilities</span></span>
+      <span class="brand"><img class="mark" src="assets/logo.png" alt="" /> <span id="appName">Jdot Utilities</span></span>
       <div class="tabs">
-        <button class="tab active" data-tab="convert">Utilities</button>
+        <button class="tab active" data-tab="convert">Convert</button>
+        <button class="tab" data-tab="pdf">PDF Tools</button>
         <button class="tab" data-tab="settings">Settings</button>
       </div>
       <span class="spacer"></span>
@@ -141,8 +141,8 @@
     </div>
 
     <main>
-      <section data-view="convert">
-        <nav class="rail"><div class="rail-head">Tools</div><div id="toolList"></div></nav>
+      <section data-view="stage">
+        <nav class="rail"><div class="rail-head" id="railHead">Tools</div><div id="toolList"></div></nav>
         <div class="stage">
           <h1 id="toolName">Pick a tool</h1>
           <p class="desc" id="toolDesc">Choose a tool, then add files.</p>
@@ -292,19 +292,50 @@
       const applyTheme = (t) => document.documentElement.setAttribute("data-theme", t);
       async function saveSettings(patch){ SETTINGS = { ...SETTINGS, ...patch }; if (hasApi) SETTINGS = await api.setSettings(patch); }
 
+      // The "Convert" and "PDF Tools" tabs share one stage; they differ only in
+      // which tools the rail shows. Section membership is data-driven: PDF-category
+      // tools live under PDF Tools, everything else under Convert.
+      const C = { tools:[], active:null, jobs:[], done:0, section:"convert" };
+      const sectionOf = (t)=> (t.category||"").toLowerCase()==="pdf" ? "pdf" : "convert";
+      const toolsIn = (section)=> C.tools.filter((t)=> sectionOf(t)===section);
+
       function showTab(name){
-        document.querySelectorAll("[data-view]").forEach((v)=> v.hidden = v.dataset.view !== name);
-        document.querySelectorAll(".tab").forEach((b)=> b.classList.toggle("active", b.dataset.tab === name));
+        if(name==="settings"){
+          document.querySelectorAll("[data-view]").forEach((v)=> v.hidden = v.dataset.view!=="settings");
+          document.querySelectorAll(".tab").forEach((b)=> b.classList.toggle("active", b.dataset.tab==="settings"));
+          return;
+        }
+        // A utility section: show the shared stage, retarget the rail.
+        C.section = name;
+        document.querySelectorAll("[data-view]").forEach((v)=> v.hidden = v.dataset.view!=="stage");
+        document.querySelectorAll(".tab").forEach((b)=> b.classList.toggle("active", b.dataset.tab===name));
+        $("railHead").textContent = name==="pdf" ? "PDF Tools" : "Convert";
+        renderRail();
+        // Keep the current tool if it belongs to this section; otherwise pick the first.
+        if(!C.active || sectionOf(C.active)!==name){
+          const first = toolsIn(name)[0];
+          if(first) selectTool(first.id); else clearStage();
+        }
       }
       document.querySelectorAll(".tab").forEach((b)=> b.onclick = ()=> showTab(b.dataset.tab));
 
-      const C = { tools:[], active:null, jobs:[], done:0 };
+      function clearStage(){
+        C.active=null; C.jobs=[]; C.done=0; C.result=null;
+        $("toolName").textContent="No tools here"; $("toolDesc").textContent="";
+        $("accept").textContent=""; renderQueue(); updateConvert();
+      }
+
       function renderRail(){
-        const byCat = {}; C.tools.forEach((t)=> (byCat[t.category] ||= []).push(t));
+        const tools = toolsIn(C.section);
+        const byCat = {}; tools.forEach((t)=> (byCat[t.category] ||= []).push(t));
         const list = $("toolList"); list.innerHTML = "";
-        Object.keys(byCat).sort().forEach((cat)=>{
-          const l = document.createElement("div"); l.className="cat-label"; l.textContent=cat; list.appendChild(l);
-          byCat[cat].forEach((t)=>{ const b=document.createElement("button"); b.className="tool-btn"; b.textContent=t.name; b.dataset.id=t.id; b.onclick=()=>selectTool(t.id); list.appendChild(b); });
+        // Within Convert, category headers still help; within PDF there's one category
+        // so the header is redundant — show it only when there's more than one.
+        const cats = Object.keys(byCat).sort();
+        const showHeaders = cats.length > 1;
+        cats.forEach((cat)=>{
+          if(showHeaders){ const l=document.createElement("div"); l.className="cat-label"; l.textContent=cat; list.appendChild(l); }
+          byCat[cat].forEach((t)=>{ const b=document.createElement("button"); b.className="tool-btn"; b.textContent=t.name; b.dataset.id=t.id; if(C.active&&C.active.id===t.id) b.classList.add("active"); b.onclick=()=>selectTool(t.id); list.appendChild(b); });
         });
       }
       const kindOf = (t)=> (t && t.kind) || "convert";
@@ -600,10 +631,9 @@
       (async ()=>{
         if(hasApi){ const info=await api.info(); $("appName").textContent=info.name; document.title=info.name; $("ver").textContent="v"+info.version; SETTINGS=await api.getSettings(); C.tools=await api.listTools(); }
         else { $("previewBadge").hidden=false; $("ver").textContent="preview"; C.tools=FALLBACK_TOOLS; }
-        applyTheme(SETTINGS.theme); renderRail(); paintSettings(); refreshOffice(); setSaveLine(); updateSummary();
-        // Open on the first converter, not whatever sorts first (e.g. Merge PDFs).
-        const first = C.tools.find((t)=>((t.kind||"convert")==="convert")) || C.tools[0];
-        if(first) selectTool(first.id);
+        applyTheme(SETTINGS.theme); paintSettings(); refreshOffice(); setSaveLine(); updateSummary();
+        // Open on the Convert section (its first tool selected by showTab).
+        showTab("convert");
       })();
     </script>
   </body>

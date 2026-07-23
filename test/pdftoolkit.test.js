@@ -226,5 +226,5 @@ test("produced PDFs carry our Producer, not pdf-lib's", async () => {
   const src = await makePdf(path.join(d, "book.pdf"), 2);
   const out = path.join(d, "x.pdf");
   await extractPages(src, out, "1");
-  assert.strictEqual((await reopen(out)).getProducer(), "JDot Utilities");
+  assert.strictEqual((await reopen(out)).getProducer(), "Jdot Utilities");
 });
