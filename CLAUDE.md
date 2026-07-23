@@ -140,8 +140,9 @@ async convert({ inputPath, outputPath, outputFormat, options, signal, onProgress
 
 ## Themes
 Three: **light**, **grey** (default), **black**. Driven by CSS custom properties in
-`[data-theme="…"]` blocks at the **top of `index.html`**; the accent is copper/amber
-(deliberately not blue). To retheme, edit those token blocks only.
+`[data-theme="…"]` blocks at the **top of `index.html`**; the accent is the brand
+**royal blue** (matches the logo): `#3b74f0` on the dark themes, `#1e50e5` on light.
+To retheme, edit those token blocks only — all accent colour is confined to them.
 
 ## Gotchas / constraints
 - **sharp is native.** It's in `asarUnpack` (electron-builder.yml). Build the `.exe`
