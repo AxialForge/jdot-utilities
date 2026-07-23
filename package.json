@@ -1,6 +1,6 @@
 {
   "name": "jdot-utilities",
-  "version": "0.3.0",
+  "version": "0.5.0",
   "description": "Local, offline file utilities — conversion, PDF tools, and more. No cloud, no account, no upload.",
   "main": "src/main/main.js",
   "author": "Joe",
@@ -15,8 +15,10 @@
   },
   "dependencies": {
     "@napi-rs/canvas": "^1.0.2",
+    "fast-xml-parser": "^5.10.1",
     "heic-convert": "^2.1.0",
     "html-to-docx": "^1.8.0",
+    "js-yaml": "^5.2.1",
     "mammoth": "^1.8.0",
     "marked": "^4.3.0",
     "pdf-lib": "^1.17.1",

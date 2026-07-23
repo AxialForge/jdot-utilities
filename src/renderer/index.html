@@ -264,12 +264,19 @@
           </div>
 
           <div class="set-group">
-            <div class="set-head">Office (LibreOffice)</div>
+            <div class="set-head">External engines</div>
             <div class="set-row">
-              <div class="info"><div class="t">LibreOffice</div><div class="h" id="loStatus">Checking…</div></div>
+              <div class="info"><div class="t">LibreOffice</div><div class="h" id="loStatus">Checking…</div><div class="h muted">Needed for Office (Word / Sheets / Slides) conversions.</div></div>
               <div style="display:flex; gap:8px;">
                 <button class="btn small" id="chooseLo">Choose…</button>
                 <button class="btn small" id="resetLo">Auto</button>
+              </div>
+            </div>
+            <div class="set-row">
+              <div class="info"><div class="t">Ghostscript</div><div class="h" id="gsStatus">Checking…</div><div class="h muted">Needed for Compress / PDF-A.</div></div>
+              <div style="display:flex; gap:8px;">
+                <button class="btn small" id="chooseGs">Choose…</button>
+                <button class="btn small" id="resetGs">Auto</button>
               </div>
             </div>
           </div>
@@ -330,9 +337,17 @@
             {key:"dpi",label:"Resolution (DPI)",type:"number",min:36,max:432,default:150},
             {key:"pages",label:"Pages (blank = all), e.g. 1-3, 5",type:"text",default:""}] },
         { id:"pdf-to-text", name:"PDF → Text", kind:"convert", category:"PDF",
-          description:"Extract the text layer from a PDF. (Scanned/image-only PDFs need OCR — not covered.)",
+          description:"Extract the text layer from a PDF. (Scanned/image-only PDFs need OCR.)",
           inputFormats:["pdf"], outputFormats:["txt"], options:[
             {key:"pageBreaks",label:"Insert a page break between pages",type:"boolean",default:false}] },
+        { id:"pdf-optimize", name:"Compress / PDF-A", kind:"convert", category:"PDF",
+          description:"Shrink a PDF, or convert it to archival PDF/A. Requires Ghostscript (bundled, or installed).",
+          inputFormats:["pdf"], outputFormats:["pdf"], options:[
+            {key:"preset",label:"Output",type:"select",choices:["Compress — small (screen)","Compress — balanced (ebook)","Compress — high quality (printer)","Archive — PDF/A-2b","Archive — PDF/A-1b (strict)"],default:"Compress — balanced (ebook)"}] },
+        { id:"data-convert", name:"Data Converter", kind:"convert", category:"Data",
+          description:"Convert between JSON, YAML, CSV, TSV, and XML. Flat formats (CSV/TSV) flatten nested data.",
+          inputFormats:["json","yaml","yml","csv","tsv","xml"], outputFormats:["json","yaml","csv","tsv","xml"],
+          excludePairs:{ json:["json"], yaml:["yaml"], yml:["yaml"], csv:["csv"], tsv:["tsv"], xml:["xml"] }, options:[] },
         { id:"image-convert", name:"Image Converter", category:"Image", description:"Convert between image formats (incl. WebP, AVIF, HEIC), with optional resize and quality.",
           inputFormats:["png","jpg","jpeg","webp","avif","tiff","gif","svg","heic","heif"], outputFormats:["png","jpg","jpeg","webp","avif","tiff","gif"],
           options:[{key:"maxWidth",label:"Max width (px, 0 = keep original)",type:"number",min:0,max:40000,default:0},
@@ -787,12 +802,21 @@
       $("chooseLo").onclick=async()=>{ if(!hasApi){ setStatus("Runs in the installed app."); return; } const p=await api.pickOneFile(); if(p){ await saveSettings({libreOfficePath:p}); refreshOffice(); } };
       $("resetLo").onclick=async()=>{ await saveSettings({libreOfficePath:null}); refreshOffice(); };
 
+      async function refreshGs(){
+        const el=$("gsStatus"); if(!el) return;
+        if(!hasApi){ el.textContent="Detected automatically in the installed app."; return; }
+        const p=await api.locateGhostscript();
+        el.textContent = p ? ("Found: "+p) : "Not found — install Ghostscript, or choose the gs binary.";
+      }
+      $("chooseGs").onclick=async()=>{ if(!hasApi){ setStatus("Runs in the installed app."); return; } const p=await api.pickOneFile(); if(p){ await saveSettings({ghostscriptPath:p}); refreshGs(); } };
+      $("resetGs").onclick=async()=>{ await saveSettings({ghostscriptPath:null}); refreshGs(); };
+
       function setStatus(t){ $("status").textContent=t; }
 
       (async ()=>{
         if(hasApi){ const info=await api.info(); $("appName").textContent=info.name; document.title=info.name; $("ver").textContent="v"+info.version; SETTINGS=await api.getSettings(); C.tools=await api.listTools(); }
         else { $("previewBadge").hidden=false; $("ver").textContent="preview"; C.tools=FALLBACK_TOOLS; }
-        applyTheme(SETTINGS.theme); paintSettings(); refreshOffice(); setSaveLine(); updateSummary();
+        applyTheme(SETTINGS.theme); paintSettings(); refreshOffice(); refreshGs(); setSaveLine(); updateSummary();
         // Open on the Convert section (its first tool selected by showTab).
         showTab("convert");
       })();

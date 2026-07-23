@@ -104,6 +104,9 @@ ipcMain.handle("settings:set", (_e, patch) => settings.write(patch || {}));
 // Report whether LibreOffice can be found (for the Settings UI).
 ipcMain.handle("office:locate", () => locateSoffice(settings.readSync().libreOfficePath));
 
+// Report whether Ghostscript can be found (Compress / PDF-A).
+ipcMain.handle("gs:locate", () => require("./gs").locateGs(settings.readSync().ghostscriptPath));
+
 // Pick a single file (used to choose the LibreOffice binary).
 ipcMain.handle("file:pickOne", async () => {
   const res = await dialog.showOpenDialog(mainWindow, { properties: ["openFile"] });

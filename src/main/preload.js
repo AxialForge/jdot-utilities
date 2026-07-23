@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld("api", {
   getSettings: () => ipcRenderer.invoke("settings:get"),
   setSettings: (patch) => ipcRenderer.invoke("settings:set", patch),
   locateOffice: () => ipcRenderer.invoke("office:locate"),
+  locateGhostscript: () => ipcRenderer.invoke("gs:locate"),
   pickOneFile: () => ipcRenderer.invoke("file:pickOne"),
 
   convert: (payload) => ipcRenderer.invoke("convert:run", payload),
