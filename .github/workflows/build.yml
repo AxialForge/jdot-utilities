@@ -30,7 +30,9 @@ jobs:
         run: npm test
 
       - name: Build .exe
-        run: npm run build:win
+        # --publish never: electron-builder only builds; the action below does the
+        # GitHub release (otherwise electron-builder tries to publish and demands GH_TOKEN).
+        run: npm run build:win -- --publish never
         env:
           # Optional code signing. Add these as repository secrets to sign the
           # build; without them electron-builder produces an unsigned .exe.
