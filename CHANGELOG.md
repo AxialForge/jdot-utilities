@@ -2,9 +2,35 @@
 
 All notable changes to Jdot Utilities. Dates are YYYY-MM-DD.
 
+## 0.7.2 — 2026-07-23
+
+**This is the release that actually fixes 0.7.0. Use this one.**
+
+### Fix: the app opened with no tools and nothing responded to clicks
+This was the real cause of the dead window, and 0.7.1 did not address it.
+
+- The page script declared `const api` at its top level, while `preload.js`
+  publishes the bridge as a non-configurable global of the same name. JavaScript
+  forbids a top-level `const` from shadowing such a property, so the **entire**
+  page script was rejected before its first line ran — no tool list, no version
+  number, no click handlers. The window still drew because the layout is plain
+  markup, which made a dead script look like a broken UI.
+- The script is now wrapped in a function, where its names are local and cannot
+  collide with this or any future bridge key.
+- Added a regression test that recreates the bridge as a non-configurable global
+  and runs the real page script against it. It fails on the 0.7.0/0.7.1 code and
+  passes now. A second test asserts the page leaks no globals at all, so this
+  cannot come back under a different name.
+
+Why the release testing missed it: the fault only exists when the bridge is
+present. Opened in a plain browser there is no bridge, nothing collides, and the
+page behaves perfectly — which is exactly what had been checked. Verifying the
+UI in a browser is no longer treated as evidence that the packaged app starts.
+
 ## 0.7.1 — 2026-07-23
 
-A reliability fix for machines where the app opened but froze.
+A hardening release for machines where the app opened but froze. It is worth
+keeping, but on its own it did **not** fix the 0.7.0 startup failure — see 0.7.2.
 
 ### Fix: window opens but nothing is clickable (GPU / hardware acceleration)
 - On some Windows machines — outdated or broken GPU drivers, virtual machines, or

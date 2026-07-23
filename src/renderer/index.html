@@ -325,6 +325,20 @@
     <input type="file" id="fileInput" multiple hidden />
 
     <script>
+      // Everything below runs inside this function on purpose — do not unwrap it.
+      //
+      // preload.js publishes the bridge with contextBridge.exposeInMainWorld("api"),
+      // which defines `api` as a NON-CONFIGURABLE property of the global object.
+      // A top-level `const api` in a classic script is a global lexical binding,
+      // and the spec forbids one from shadowing a non-configurable global
+      // property — so at global scope that line throws
+      //     SyntaxError: Identifier 'api' has already been declared
+      // which kills the ENTIRE script: no tools, no version, no click handlers.
+      //
+      // It only breaks in the real app: a plain browser (Preview mode) has no
+      // window.api, so there is nothing to collide with and the page looks fine.
+      // Inside a function these are ordinary local bindings, so any name is safe.
+      (function () {
       const api = window.api || null;
       const hasApi = !!api;
       const $ = (id) => document.getElementById(id);
@@ -934,6 +948,7 @@
         // After the first paint: a missing engine is worth saying up front, but
         // never worth delaying startup for.
         refreshEngines();
+      })();
       })();
     </script>
   </body>

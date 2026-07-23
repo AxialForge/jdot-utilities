@@ -191,6 +191,19 @@ To retheme, edit those token blocks only — all accent colour is confined to th
   Mixing the two means two JPEG encoders whose quality scales disagree, so the
   same `quality` produced very different files depending on the greyscale
   toggle — and greyscale could come out *larger* than colour.
+- **The renderer's whole script lives inside a wrapper function — never unwrap
+  it, and never add code at global scope.** `preload.js` exposes the bridge via
+  `contextBridge.exposeInMainWorld("api")`, which makes `api` a
+  **non-configurable** global property. A top-level `const api` (or any bridge
+  key) is then a SyntaxError — *"Identifier 'api' has already been declared"* —
+  that rejects the entire script before line 1, so the app opens with an empty
+  tool rail, a blank version chip, and no working buttons. This shipped in
+  v0.7.0. **Preview mode cannot catch it**: a plain browser has no `window.api`,
+  so nothing collides and the page looks fine. `test/renderer-scope.test.js`
+  recreates the collision in a `vm` context and asserts no globals leak.
+  **Corollary: verifying the UI in the browser pane is not sufficient evidence
+  that the packaged app boots — run `npx electron . --enable-logging` and read
+  the renderer console.**
 - **Select options must apply their declared `default`.** `renderOptions` sets
   `inp.value = opt.default`; without it a `select` silently lands on its first
   choice, which is how Compress/PDF-A ended up defaulting to `screen` rather
