@@ -16,6 +16,15 @@ contextBridge.exposeInMainWorld("api", {
   locateGhostscript: () => ipcRenderer.invoke("gs:locate"),
   engineStatus: () => ipcRenderer.invoke("engines:status"),
   openEngineDownload: (id) => ipcRenderer.invoke("engines:openDownload", id),
+  canInstallEngine: () => ipcRenderer.invoke("engines:canInstall"),
+  gpuStatus: () => ipcRenderer.invoke("gpu:status"),
+  installEngine: (id) => ipcRenderer.invoke("engines:install", id),
+  onEngineInstallProgress: (cb) => {
+    const h = (_e, d) => cb(d);
+    ipcRenderer.on("engines:installProgress", h);
+    return () => ipcRenderer.removeListener("engines:installProgress", h);
+  },
+  pickSaveDir: (title) => ipcRenderer.invoke("folder:pickSave", title),
   pickOneFile: () => ipcRenderer.invoke("file:pickOne"),
 
   convert: (payload) => ipcRenderer.invoke("convert:run", payload),

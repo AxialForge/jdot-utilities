@@ -34,7 +34,8 @@ converter doesn't touch the UI.
 - **Shrink a PDF with nothing installed** — the built-in shrinker needs no Ghostscript; ideal for scans and phone-photo PDFs.
 - **Document conversion** — Markdown, HTML, Word (`.docx`), plain text, PDF — any-to-any.
 - **Image conversion** — PNG, JPG, WebP, AVIF, TIFF, GIF, BMP, **Windows ICO**, plus HEIC/HEIF (iPhone photos), with resize presets and quality.
-- **Tells you what's missing** — if an optional engine isn't installed, the app says so on launch and on the tool, instead of failing after you press Convert.
+- **Tells you what's missing** — if an optional engine isn't installed, the app says so on launch and on the tool, instead of failing after you press Convert. LibreOffice can be installed in one click via Windows Package Manager.
+- **Verifiably offline** — the PDF renderer runs in a session that refuses every non-local address, and a test asserts remote requests are blocked while local images still load.
 - **Data conversion** — JSON, YAML, CSV, TSV, XML, any-to-any.
 - **Office** (via installed LibreOffice) — Word, spreadsheet, and presentation families, each to PDF.
 - **All Tools tab** — every capability as a simple card: what it does and its formats, one click to open.

@@ -2,6 +2,56 @@
 
 All notable changes to Jdot Utilities. Dates are YYYY-MM-DD.
 
+## 1.0.0 — 2026-07-24
+
+First stable release. This one is mostly about trust: an outside code review
+found two serious problems, both are fixed and covered by tests, and the app now
+tells you the truth about its own state rather than assuming.
+
+### Security and correctness
+
+- **The offline promise was leaking, and now doesn't.** Converting a document to
+  PDF renders it in a hidden browser window with JavaScript disabled — but that
+  never stopped the renderer from *fetching* remote images, stylesheets, or CSS
+  backgrounds named in the file. A document with a hotlinked image quietly made
+  real network requests, which told whoever sent it that you opened the file.
+  Confirmed with a live test (three requests went out), then fixed by running the
+  render pool in a session that refuses every non-local address. A permanent test
+  now asserts the requests are attempted and refused, and that local images still
+  work so the block isn't over-broad.
+- **Updated the browser engine.** The app was on Electron 32, which stopped
+  receiving security fixes in March 2025. It is now on 43, the current release.
+- **Fixed a crash that would have hit every large batch.** The upgrade exposed a
+  latent bug: converting **four or more documents at once** killed the app
+  outright. A pooled window was handed to the next job while still navigating
+  away from the previous one. It passed at one, two, and three files and died at
+  four — squarely in normal use.
+- Raised a memory guard on image loading rather than leaving it switched off,
+  stopped LibreOffice conversions leaking temp folders on every run, and turned
+  off XML entity expansion when reading data files.
+
+### Getting the optional extras
+
+- **One-click install for LibreOffice.** If it isn't found, the app offers to
+  install it through Windows Package Manager — Windows does the downloading and
+  verifies the signature; the app never fetches or runs an installer itself, and
+  only ever acts on an explicit click. Offered on first launch and on the tool
+  that needs it.
+- Ghostscript has no Windows Package Manager entry, so it gets a link to the
+  official download page instead of a button that couldn't work. **Shrink PDF
+  needs neither** and is the reason compression works with nothing installed.
+- Both now show a status light, so you can see at a glance what's present.
+
+### Knowing what the app is doing
+
+- **Hardware acceleration status light.** The setting says what you *asked for*;
+  the light says what's actually happening. A blocked driver, a virtual machine,
+  or a crash-triggered fallback all leave the setting reading "auto" while
+  everything quietly renders in software — now you can see the difference.
+- **Ask where to save.** With no default output folder set, every run opens a
+  Save dialog instead of scattering files next to their sources. On by default,
+  and switchable in Settings.
+
 ## 0.8.0 — 2026-07-23
 
 A working-with-PDFs release: see the pages you're operating on, understand what

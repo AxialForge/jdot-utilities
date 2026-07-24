@@ -137,6 +137,13 @@
       .chip { font-family:ui-monospace,Consolas,monospace; font-size:11px; padding:2px 7px; border-radius:4px; background:var(--panel-2); color:var(--muted); text-transform:uppercase; }
       .chip.out { background:var(--accent-dim); color:var(--accent); }
       .arrow { color:var(--muted); }
+      /* Status dot: reports what IS, not what was asked for. */
+      .dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:7px;
+        background:var(--muted); vertical-align:middle; }
+      .dot.on { background:var(--ok); box-shadow:0 0 0 3px rgba(95,208,138,.18); }
+      .dot.off { background:var(--muted); }
+      .dot.warn { background:var(--warn); box-shadow:0 0 0 3px rgba(224,177,95,.18); }
+
       .job-note { font-size:11.5px; color:var(--ok); white-space:nowrap; }
       .job-note.err { color:var(--err); }
       .job-x { border:0; background:transparent; color:var(--muted); cursor:pointer; font-size:15px; }
@@ -241,6 +248,7 @@
     <div class="notice" id="engineNotice" hidden>
       <span class="grow" id="engineNoticeText"></span>
       <span class="acts">
+        <button class="btn small" id="engineNoticeInstall" hidden>Install</button>
         <button class="btn small" id="engineNoticeSettings">Open Settings</button>
         <button class="btn small" id="engineNoticeDismiss">Dismiss</button>
       </span>
@@ -271,7 +279,10 @@
             <!-- Warns before any files are added when this tool's engine is absent. -->
             <div class="notice inline" id="engineWarn" hidden>
               <span class="grow" id="engineWarnText"></span>
-              <span class="acts"><button class="btn small" id="engineWarnGet">Get it</button></span>
+              <span class="acts">
+                <button class="btn small" id="engineWarnInstall" hidden>Install now</button>
+                <button class="btn small" id="engineWarnGet">Download page</button>
+              </span>
             </div>
             <div class="drop" id="drop">
               <div>Drop files here</div>
@@ -347,6 +358,10 @@
               </div>
             </div>
             <div class="set-row">
+              <div class="info"><div class="t">Ask where to save</div><div class="h">When no folder is set above, open a Save dialog on every run instead of writing next to each source file.</div></div>
+              <div class="seg" id="askSeg"><button data-ask-val="off">Off</button><button data-ask-val="on">On</button></div>
+            </div>
+            <div class="set-row">
               <div class="info"><div class="t">Add folder includes subfolders</div><div class="h">When adding a folder, also pull files from nested subfolders.</div></div>
               <div class="seg" id="subSeg"><button data-sub-val="off">Off</button><button data-sub-val="on">On</button></div>
             </div>
@@ -362,7 +377,7 @@
           <div class="set-group">
             <div class="set-head">Performance</div>
             <div class="set-row">
-              <div class="info"><div class="t">Hardware acceleration</div><div class="h">Uses the GPU where supported (PDF rendering, future video). Takes effect on restart. If the window ever opens frozen, set this to Off — or launch once with <code>--safe-mode</code> to do it without opening this screen.</div></div>
+              <div class="info"><div class="t"><span class="dot" id="gpuDot"></span>Hardware acceleration</div><div class="h" id="gpuStatus">Checking…</div><div class="h">Uses the GPU where supported (PDF rendering, future video). Takes effect on restart. If the window ever opens frozen, set this to Off — or launch once with <code>--safe-mode</code> to do it without opening this screen.</div></div>
               <div class="seg" id="hwSeg">
                 <button data-hw-val="auto">Auto</button>
                 <button data-hw-val="on">On</button>
@@ -374,15 +389,19 @@
           <div class="set-group">
             <div class="set-head">External engines</div>
             <div class="set-row">
-              <div class="info"><div class="t">LibreOffice</div><div class="h" id="loStatus">Checking…</div><div class="h muted">Needed for Office (Word / Sheets / Slides) conversions.</div></div>
+              <div class="info"><div class="t"><span class="dot" id="loDot"></span>LibreOffice</div><div class="h" id="loStatus">Checking…</div><div class="h muted">Needed for Office (Word / Sheets / Slides) conversions.</div></div>
               <div style="display:flex; gap:8px;">
+                <button class="btn small" id="loInstall" hidden>Install</button>
+                <button class="btn small" id="loGet">Download page</button>
                 <button class="btn small" id="chooseLo">Choose…</button>
                 <button class="btn small" id="resetLo">Auto</button>
               </div>
             </div>
             <div class="set-row">
-              <div class="info"><div class="t">Ghostscript</div><div class="h" id="gsStatus">Checking…</div><div class="h muted">Needed for Compress / PDF-A.</div></div>
+              <div class="info"><div class="t"><span class="dot" id="gsDot"></span>Ghostscript</div><div class="h" id="gsStatus">Checking…</div><div class="h muted">Needed for Compress / PDF-A. Shrink PDF works without it.</div></div>
               <div style="display:flex; gap:8px;">
+                <button class="btn small" id="gsInstall" hidden>Install</button>
+                <button class="btn small" id="gsGet">Download page</button>
                 <button class="btn small" id="chooseGs">Choose…</button>
                 <button class="btn small" id="resetGs">Auto</button>
               </div>
@@ -521,7 +540,7 @@
           inputFormats:["pptx","ppt","odp"], outputFormats:["pdf","pptx","odp"], options:[] },
       ];
 
-      let SETTINGS = { theme:"grey", defaultOutputDir:null, pdfPageSize:"Letter", concurrency:4, hardwareAcceleration:"auto", recurseFolders:false, libreOfficePath:null, ghostscriptPath:null, hideEngineNotice:false };
+      let SETTINGS = { theme:"grey", defaultOutputDir:null, pdfPageSize:"Letter", concurrency:4, hardwareAcceleration:"auto", recurseFolders:false, libreOfficePath:null, ghostscriptPath:null, hideEngineNotice:false, askWhereToSave:true };
       const applyTheme = (t) => document.documentElement.setAttribute("data-theme", t);
       async function saveSettings(patch){ SETTINGS = { ...SETTINGS, ...patch }; if (hasApi) SETTINGS = await api.setSettings(patch); }
 
@@ -1104,6 +1123,17 @@
           setStatus("Preview — this runs for real in the installed app."); updateConvert(); return;
         }
 
+        // With no default output folder set, ask where the results go instead of
+        // dropping them beside their sources — a batch pulled from several
+        // folders otherwise scatters, and there is no single place to look.
+        // A `collect` tool already opens its own Save dialog, so skip it there.
+        C.saveDir = SETTINGS.defaultOutputDir || null;
+        if(!C.saveDir && SETTINGS.askWhereToSave!==false && !isCollect()){
+          const picked = await api.pickSaveDir(`Where should the ${C.active.name} output go?`);
+          if(!picked){ setStatus("Cancelled — no output folder chosen."); updateConvert(); return; }
+          C.saveDir = picked;
+        }
+
         $("cancelBtn").hidden=false; $("cancelBtn").disabled=false;
         try {
           if(isConvert()) await runConvertKind(elig);
@@ -1121,7 +1151,7 @@
         const { results, error, cancelled } = await api.convert({
           toolId:C.active.id, files:elig.map(({j})=>j.path),
           outputFormat:$("formatSelect").value, options:collectOptions(),
-          outputDir:SETTINGS.defaultOutputDir,
+          outputDir:C.saveDir||SETTINGS.defaultOutputDir,
         });
         if(error){ setStatus("Error: "+error); return; }
         const okc=results.filter((r)=>r.ok).length;
@@ -1133,7 +1163,7 @@
         setStatus(`${C.active.name}…`);
         const res = await api.runUtil({
           toolId:C.active.id, files:elig.map(({j})=>j.path),
-          options:collectOptions(), outputDir:SETTINGS.defaultOutputDir,
+          options:collectOptions(), outputDir:C.saveDir||SETTINGS.defaultOutputDir,
         });
         const leds=[...document.querySelectorAll(".job .led")];
         if(res.canceled){ setStatus("Cancelled."); leds.forEach((l)=>l.className="led"); return; }
@@ -1187,23 +1217,54 @@
         document.querySelectorAll("#themeSeg button").forEach((b)=> b.classList.toggle("on", b.dataset.themeVal===SETTINGS.theme));
         document.querySelectorAll("#hwSeg button").forEach((b)=> b.classList.toggle("on", b.dataset.hwVal===SETTINGS.hardwareAcceleration));
         document.querySelectorAll("#subSeg button").forEach((b)=> b.classList.toggle("on", (b.dataset.subVal==="on")===!!SETTINGS.recurseFolders));
+        document.querySelectorAll("#askSeg button").forEach((b)=> b.classList.toggle("on", (b.dataset.askVal==="on")===(SETTINGS.askWhereToSave!==false)));
         $("pageSizeSet").value=SETTINGS.pdfPageSize; $("concRange").value=SETTINGS.concurrency; $("concVal").textContent=SETTINGS.concurrency;
         $("outDirText").textContent = SETTINGS.defaultOutputDir || "Next to each source file."; setSaveLine();
       }
       document.querySelectorAll("#themeSeg button").forEach((b)=> b.onclick=async()=>{ applyTheme(b.dataset.themeVal); await saveSettings({theme:b.dataset.themeVal}); paintSettings(); });
       document.querySelectorAll("#hwSeg button").forEach((b)=> b.onclick=async()=>{ await saveSettings({hardwareAcceleration:b.dataset.hwVal}); paintSettings(); setStatus("Hardware acceleration applies on restart."); });
       document.querySelectorAll("#subSeg button").forEach((b)=> b.onclick=async()=>{ await saveSettings({recurseFolders:b.dataset.subVal==="on"}); paintSettings(); });
+      document.querySelectorAll("#askSeg button").forEach((b)=> b.onclick=async()=>{ await saveSettings({askWhereToSave:b.dataset.askVal==="on"}); paintSettings(); });
       $("pageSizeSet").onchange=async(e)=>{ await saveSettings({pdfPageSize:e.target.value}); paintSettings(); };
       $("concRange").oninput=(e)=>{ $("concVal").textContent=e.target.value; };
       $("concRange").onchange=async(e)=>{ await saveSettings({concurrency:Number(e.target.value)}); };
       $("chooseOut").onclick=async()=>{ if(!hasApi){ setStatus("Choosing a folder runs in the installed app."); return; } const dir=await api.pickFolder(); if(dir){ await saveSettings({defaultOutputDir:dir}); paintSettings(); } };
       $("clearOut").onclick=async()=>{ await saveSettings({defaultOutputDir:null}); paintSettings(); };
 
+      // Reports whether the GPU is ACTUALLY doing the work, which is not the
+      // same as what the toggle above asks for: a blocklisted driver, a VM, or
+      // a crash-triggered fallback all leave the setting saying "auto" while
+      // everything quietly renders in software.
+      async function refreshGpu(){
+        const el=$("gpuStatus"), dot=$("gpuDot"); if(!el) return;
+        if(!hasApi){ el.textContent="Reported in the installed app."; dot.className="dot"; return; }
+        let s; try { s = await api.gpuStatus(); } catch { s=null; }
+        if(!s){ el.textContent="Could not be determined."; dot.className="dot"; return; }
+
+        if(s.forcedOff){
+          dot.className="dot off";
+          el.textContent = s.requested==="off"
+            ? "Off — running in software rendering, as set."
+            : "Off for this launch — started in safe mode.";
+        } else if(s.unknown){
+          dot.className="dot warn";
+          el.textContent="Active, but this build reports no detail.";
+        } else if(s.accelerated){
+          dot.className="dot on";
+          el.textContent="Working — the GPU is rendering on this PC.";
+        } else {
+          dot.className="dot warn";
+          el.textContent="Requested, but this PC is rendering in software (driver blocked or unavailable). Everything still works, just slower.";
+        }
+      }
+
       async function refreshOffice(){
         const el=$("loStatus"); if(!el) return;
         if(!hasApi){ el.textContent="Detected automatically in the installed app."; return; }
         const p=await api.locateOffice();
         el.textContent = p ? ("Found: "+p) : "Not found — install LibreOffice, or choose the soffice binary.";
+        const d=$("loDot"); if(d) d.className = "dot "+(p?"on":"off");
+        const b=$("loInstall"); if(b) b.hidden = Boolean(p) || !CAN_INSTALL;
       }
       $("chooseLo").onclick=async()=>{ if(!hasApi){ setStatus("Runs in the installed app."); return; } const p=await api.pickOneFile(); if(p){ await saveSettings({libreOfficePath:p}); refreshOffice(); refreshEngines(); } };
       $("resetLo").onclick=async()=>{ await saveSettings({libreOfficePath:null}); refreshOffice(); refreshEngines(); };
@@ -1213,7 +1274,14 @@
         if(!hasApi){ el.textContent="Detected automatically in the installed app."; return; }
         const p=await api.locateGhostscript();
         el.textContent = p ? ("Found: "+p) : "Not found — install Ghostscript, or choose the gs binary.";
+        const d=$("gsDot"); if(d) d.className = "dot "+(p?"on":"off");
+        // Ghostscript has no Windows Package Manager entry, so there is no
+        // Install button to offer — the download page is the honest route.
+        const b=$("gsInstall"); if(b) b.hidden = true;
       }
+      $("loGet").onclick=()=> hasApi && api.openEngineDownload("libreoffice");
+      $("gsGet").onclick=()=> hasApi && api.openEngineDownload("ghostscript");
+      $("loInstall").onclick=()=> installEngine("libreoffice", $("loStatus"));
       $("chooseGs").onclick=async()=>{ if(!hasApi){ setStatus("Runs in the installed app."); return; } const p=await api.pickOneFile(); if(p){ await saveSettings({ghostscriptPath:p}); refreshGs(); refreshEngines(); } };
       $("resetGs").onclick=async()=>{ await saveSettings({ghostscriptPath:null}); refreshGs(); refreshEngines(); };
 
@@ -1237,6 +1305,7 @@
       async function refreshEngines(){
         if(!hasApi){ ENGINES=[]; return; }
         try { ENGINES = await api.engineStatus(); } catch { ENGINES = []; }
+        try { CAN_INSTALL = await api.canInstallEngine(); } catch { CAN_INSTALL = false; }
         paintEngineNotice(); paintEngineWarn();
       }
 
@@ -1246,6 +1315,15 @@
         fillNotice($("engineNoticeText"),
           "Optional: " + missing.map((e)=>e.name).join(" and ") + " not found.",
           "Everything else works offline as normal. Affects: " + missing.map((e)=>e.needed).join("; ") + ".");
+        // Offer the install right here — this banner is what a user sees on the
+        // first launch after setup, which is the natural moment to add them.
+        const installable = missing.filter((e)=> e.winget && CAN_INSTALL);
+        const b=$("engineNoticeInstall");
+        b.hidden = installable.length===0;
+        if(installable.length){
+          b.textContent = `Install ${installable[0].name}`;
+          b.dataset.engine = installable[0].id;
+        }
         $("engineNotice").hidden=false;
       }
 
@@ -1257,8 +1335,42 @@
           "This tool needs it to run." + (eng.alternative ? " " + eng.alternative : "") +
           " Already have it? Set the path in Settings.");
         $("engineWarnGet").dataset.engine = eng.id;
+        // One-click install only where a verified package actually exists.
+        const inst=$("engineWarnInstall");
+        inst.dataset.engine = eng.id;
+        inst.hidden = !(eng.winget && CAN_INSTALL);
+        inst.textContent = `Install ${eng.name}`;
         box.hidden=false;
       }
+
+      // Runs a winget install with live progress, then re-checks the engines.
+      let CAN_INSTALL = false;
+      async function installEngine(id, statusEl){
+        const eng = engineById(id); if(!eng || !hasApi) return;
+        const say = (t)=>{ setStatus(t); if(statusEl) statusEl.textContent=t; };
+        say(`Installing ${eng.name} (${eng.sizeHint||"large download"})… Windows may ask for permission.`);
+        document.querySelectorAll("#engineWarnInstall,#loInstall,#gsInstall").forEach((b)=>{ b.disabled=true; });
+
+        const stop = api.onEngineInstallProgress(({ line })=>{
+          // winget paints progress bars with control characters; keep the last
+          // readable fragment so the user sees movement rather than a frozen UI.
+          const clean = String(line).replace(/[\r█░\-\\|/]+/g," ").trim();
+          if(clean) say(`${eng.name}: ${clean.slice(-90)}`);
+        });
+
+        let res;
+        try { res = await api.installEngine(id); }
+        finally { stop?.(); document.querySelectorAll("#engineWarnInstall,#loInstall,#gsInstall").forEach((b)=>{ b.disabled=false; }); }
+
+        if(res?.ok){
+          say(`${eng.name} installed.`);
+          await refreshEngines(); refreshOffice(); refreshGs();
+        } else {
+          say(`Could not install ${eng.name}: ${res?.error||"unknown error"}`);
+        }
+      }
+      $("engineWarnInstall").onclick=()=> installEngine($("engineWarnInstall").dataset.engine);
+      $("engineNoticeInstall").onclick=()=> installEngine($("engineNoticeInstall").dataset.engine);
 
       $("engineNoticeSettings").onclick = ()=> showTab("settings");
       $("engineNoticeDismiss").onclick = async()=>{
@@ -1276,13 +1388,12 @@
       (async ()=>{
         if(hasApi){ const info=await api.info(); $("appName").textContent=info.name; document.title=info.name+" "+info.version; $("ver").textContent="v"+info.version; SETTINGS=await api.getSettings(); C.tools=await api.listTools(); }
         else { $("previewBadge").hidden=false; $("ver").textContent="preview"; C.tools=FALLBACK_TOOLS; }
-        applyTheme(SETTINGS.theme); paintSettings(); refreshOffice(); refreshGs(); setSaveLine();
+        applyTheme(SETTINGS.theme); paintSettings(); setSaveLine();
         fillSortOptions(); updateSummary();
+        // Engines first so CAN_INSTALL is known before the panels paint.
+        await refreshEngines(); refreshOffice(); refreshGs(); refreshGpu();
         // Open on the Convert section (its first tool selected by showTab).
         showTab("convert");
-        // After the first paint: a missing engine is worth saying up front, but
-        // never worth delaying startup for.
-        refreshEngines();
       })();
       })();
     </script>

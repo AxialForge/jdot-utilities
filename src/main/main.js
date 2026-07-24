@@ -112,6 +112,45 @@ app.on("before-quit", () => {
   require("./ocr").shutdown();
 });
 
+// Is the GPU actually doing the work right now?
+//
+// The Settings toggle records what was *asked for*; this reports what Chromium
+// actually ended up doing, which is not the same thing — a blocklisted driver,
+// a VM, or a crash-triggered fallback all leave the setting saying "auto" while
+// everything renders in software.
+ipcMain.handle("gpu:status", async () => {
+  const requested = settings.readSync().hardwareAcceleration;
+  const forcedOff = require("./gpu").shouldDisableGpu({
+    setting: requested,
+    argv: process.argv,
+    env: process.env,
+  });
+
+  let features = {};
+  try {
+    features = app.getGPUFeatureStatus() || {};
+  } catch {
+    features = {};
+  }
+
+  // The compositing entries are the ones that decide whether rendering is
+  // hardware-backed. Values look like "enabled", "software only, hardware
+  // acceleration unavailable", "disabled_software", etc.
+  const keys = ["gpu_compositing", "2d_canvas", "rasterization"];
+  const relevant = keys.filter((k) => features[k]).map((k) => ({ key: k, value: features[k] }));
+  const accelerated =
+    !forcedOff && relevant.some((f) => /^enabled/.test(f.value));
+
+  return {
+    requested,
+    forcedOff,
+    accelerated,
+    detail: relevant,
+    // Nothing to report on a build with no GPU info at all.
+    unknown: relevant.length === 0,
+  };
+});
+
 // ── Info & tools ──────────────────────────────────────────────
 ipcMain.handle("app:info", () => ({
   name: config.APP_NAME,
@@ -127,6 +166,18 @@ ipcMain.handle("files:pick", async () => {
     properties: ["openFile", "multiSelections"],
   });
   return res.canceled ? [] : res.filePaths;
+});
+
+// "Where should this go?" — used when no default output folder is configured,
+// so every run ends with an explicit choice instead of files appearing silently
+// next to their sources.
+ipcMain.handle("folder:pickSave", async (_e, title) => {
+  const res = await dialog.showOpenDialog(mainWindow, {
+    title: title || "Choose where to save the output",
+    buttonLabel: "Save here",
+    properties: ["openDirectory", "createDirectory"],
+  });
+  return res.canceled ? null : res.filePaths[0];
 });
 
 ipcMain.handle("folder:pick", async () => {
@@ -183,6 +234,16 @@ ipcMain.handle("engines:status", () => require("./engines").engineStatus(setting
 ipcMain.handle("engines:openDownload", (_e, id) => {
   const engine = require("./engines").ENGINES[id];
   if (engine) shell.openExternal(engine.url);
+});
+
+// Can we offer a one-click install (i.e. is winget present)?
+ipcMain.handle("engines:canInstall", () => require("./engines").canInstall());
+
+// Install an optional engine, streaming winget's progress back to the UI.
+// Only ever reached from an explicit click.
+ipcMain.handle("engines:install", async (event, id) => {
+  const { installEngine } = require("./engines");
+  return installEngine(id, (line) => event.sender.send("engines:installProgress", { id, line }));
 });
 
 // Pick a single file (used to choose the LibreOffice binary).

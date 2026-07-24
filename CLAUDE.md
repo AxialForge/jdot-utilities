@@ -224,7 +224,27 @@ To retheme, edit those token blocks only — all accent colour is confined to th
   in-place PDF operations will silently restamp the user's metadata.
 - **`ignoreEncryption` does not decrypt.** It only skips the check, yielding
   garbage pages. `loadPdf()` rejects encrypted input with a clear message instead.
-- **Office needs LibreOffice installed** (not bundled — it's ~400 MB). `office.js`
+- **`javascript: false` does NOT make a BrowserWindow offline.** It stops script
+  *execution* only; Chromium's resource loader still fetches remote URLs named in
+  markup (`<img>`, `<link>`, CSS `url()`). `pdfrender.js` therefore runs its pool
+  in a **private session that cancels every non-local scheme** — that block is
+  the only thing keeping the "no network calls" promise for HTML→PDF. Never
+  remove it, and never move the pool onto the default session (that would apply
+  the block to the main window). `test/electron-offline.js` proves remote
+  requests are refused *and* that local `<img>` still resolves.
+- **Never release a pooled render window while a navigation is in flight.**
+  `renderPdf` must `await win.loadURL("about:blank")` before `release(win)`. It
+  used to fire-and-forget, so the next job's `loadFile()` raced the parking
+  navigation — survivable on Electron 32, a hard process crash on 43. It passed
+  at concurrency 1–3 and died at 4, i.e. exactly when a window is first reused.
+- **Electron 43+ has no install script**; the binary self-downloads on first
+  `npx electron` run. The old `allowScripts: { "electron@32.3.3": true }` entry
+  is dead weight — but note npm's `allowScripts` needs an exact `name@version`,
+  a bare package name silently does nothing.
+- **Office needs LibreOffice installed** (not bundled — it's ~400 MB). It can be
+  installed from inside the app via **winget** (`engines.js`), which keeps all
+  download/verification in Microsoft's client — the app never fetches a binary.
+  Ghostscript has no winget package, so it only ever gets a download link. `office.js`
   auto-detects it; `libreOfficePath` overrides. Each call uses a unique
   `-env:UserInstallation` profile so batch concurrency won't collide.
   **That profile must be a real file URL** — build it with `pathToFileURL()`,
