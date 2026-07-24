@@ -247,13 +247,16 @@ The one and only time it touches the network is when **you** press
 exists. Nothing downloads or installs without a further, explicit click, and the
 app never checks on its own — so if you never press it, it never connects.
 
-## Code signing policy
+## Code signing
 
-Release builds are digitally signed so Windows can verify they come from this
-project and haven't been tampered with.
+**These builds are not code-signed yet** — Windows SmartScreen may warn on first
+run ("More info" → "Run anyway"). Signing is being set up through the SignPath
+Foundation open-source program; the policy below describes how it will work once
+it's live.
 
-Free code signing provided by [SignPath.io](https://about.signpath.io),
-certificate by [SignPath Foundation](https://signpath.org).
+Once active: free code signing provided by
+[SignPath.io](https://about.signpath.io), certificate by
+[SignPath Foundation](https://signpath.org).
 
 - **Builds** are produced from public source by GitHub Actions on a version tag
   (see [`.github/workflows/build.yml`](.github/workflows/build.yml)), with the

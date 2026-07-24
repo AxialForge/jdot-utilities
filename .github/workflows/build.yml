@@ -108,6 +108,21 @@ jobs:
           node scripts/regen-latest-yml.js dist
         shell: pwsh
 
+      # The signing attribution belongs on the release ONLY when the build is
+      # actually signed — otherwise the notes would claim signing that didn't
+      # happen. So the footer is composed conditionally: the SignPath attribution
+      # when signing is enabled, and an honest SmartScreen note when it isn't.
+      - name: Compose release footer
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          if ("${{ vars.SIGNPATH_ENABLED }}" -eq "true") {
+            $footer = "`n---`nWindows builds are code-signed. Free code signing provided by [SignPath.io](https://about.signpath.io), certificate by [SignPath Foundation](https://signpath.org). See the [code signing policy](https://axialforge.github.io/jdot-utilities/#code-signing)."
+          } else {
+            $footer = "`n---`n> These builds are not code-signed yet, so Windows SmartScreen may warn on first run - choose **More info, then Run anyway**."
+          }
+          $footer | Out-File release-footer.md -Encoding utf8
+        shell: pwsh
+
       - name: Attach to release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
@@ -122,11 +137,4 @@ jobs:
             dist/*.blockmap
           generate_release_notes: true
           append_body: true
-          # Attribution required by the SignPath Foundation open-source program,
-          # shown on every release page.
-          body: |
-            ---
-            Windows builds are code-signed. Free code signing provided by
-            [SignPath.io](https://about.signpath.io), certificate by
-            [SignPath Foundation](https://signpath.org). See the
-            [code signing policy](https://axialforge.github.io/jdot-utilities/#code-signing).
+          body_path: release-footer.md

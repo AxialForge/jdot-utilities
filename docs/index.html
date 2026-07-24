@@ -209,14 +209,16 @@
         </div>
       </section>
 
-      <!-- ── Code signing policy (required by SignPath Foundation) ── -->
+      <!-- ── Code signing (status + policy) ────────────────────── -->
       <section id="code-signing">
-        <h2>Code signing policy</h2>
-        <p class="lead">Release builds of Jdot Utilities are digitally signed so Windows
-          can verify they come from this project and haven't been altered.</p>
+        <h2>Code signing</h2>
+        <p class="lead"><strong>These builds are not code-signed yet.</strong> Windows
+          SmartScreen may warn on first run — choose <em>More info</em>, then
+          <em>Run anyway</em>. Signing is being set up through the SignPath Foundation
+          open-source program; the policy below is how it will work once it's live.</p>
         <div class="policy">
           <h3>Attribution</h3>
-          <p class="attrib">Free code signing provided by
+          <p class="attrib">Once active: free code signing provided by
             <a href="https://about.signpath.io">SignPath.io</a>, certificate by
             <a href="https://signpath.org">SignPath Foundation</a>.</p>
 
@@ -265,8 +267,8 @@ module.exports = {
 
       <footer>
         <span>Jdot Utilities · MIT licensed · runs 100% locally</span>
-        <span>Free code signing by <a href="https://about.signpath.io">SignPath.io</a>,
-          certificate by <a href="https://signpath.org">SignPath Foundation</a></span>
+        <span>Code signing planned via <a href="https://about.signpath.io">SignPath.io</a> /
+          <a href="https://signpath.org">SignPath Foundation</a></span>
       </footer>
     </div>
   </body>
