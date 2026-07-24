@@ -2,8 +2,13 @@ name: Build & Release (Windows)
 
 on:
   push:
+    branches:
+      - main # run the tests on every push, so a break shows up before tagging
     tags:
       - "v*" # tag a release: git tag v0.5.0 && git push origin v0.5.0
+  pull_request:
+    branches:
+      - main
   workflow_dispatch: # or run manually from the Actions tab
 
 jobs:
@@ -29,9 +34,26 @@ jobs:
       - name: Run tests
         run: npm test
 
+      # The Electron-hosted suites cover what `npm test` structurally cannot:
+      # printToPDF, the offscreen render-window pool, and the network-egress
+      # block — all of which need a real BrowserWindow. A v1.0.0 pre-release bug
+      # that crashed the app on any 4-file batch passed `npm test` and would have
+      # been caught here, so these are now a release gate too. Separate steps so
+      # a failure names the suite. The first `npx electron` self-downloads the
+      # Electron binary (Electron 43+ has no install script).
+      - name: Run Electron PDF tests
+        run: npx electron test/electron-pdf.js
+      - name: Run Electron ops tests
+        run: npx electron test/electron-ops.js
+      - name: Run Electron offline tests
+        run: npx electron test/electron-offline.js
+
       - name: Build .exe
-        # --publish never: electron-builder only builds; the action below does the
-        # GitHub release (otherwise electron-builder tries to publish and demands GH_TOKEN).
+        # Only tags build a release; a plain push to main stops after the tests
+        # above, which is the fast feedback loop. --publish never: electron-builder
+        # only builds; the action below does the GitHub release (otherwise
+        # electron-builder tries to publish and demands GH_TOKEN).
+        if: startsWith(github.ref, 'refs/tags/')
         run: npm run build:win -- --publish never
         env:
           # Optional code signing. Add these as repository secrets to sign the
@@ -42,6 +64,7 @@ jobs:
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
 
       - name: Upload build artifacts
+        if: startsWith(github.ref, 'refs/tags/')
         uses: actions/upload-artifact@v4
         with:
           name: jdot-utilities-windows

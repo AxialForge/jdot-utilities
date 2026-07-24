@@ -40,6 +40,7 @@ converter doesn't touch the UI.
 - **Office** (via installed LibreOffice) — Word, spreadsheet, and presentation families, each to PDF.
 - **All Tools tab** — every capability as a simple card: what it does and its formats, one click to open.
 - **Visual page picker** — Rotate, Delete, and Extract show page thumbnails; click to choose pages instead of typing numbers, and see the rotation before you apply it.
+- **Reorder before merging** — drag files into order (or use the up/down buttons) when merging PDFs or building a PDF from images.
 - **Batch** — drop 100+ files, per-file progress, a concurrency limit, cancel, and sorting by name, date, size, or type.
 - **Three themes** — Light, Grey, Black, with the brand-blue accent.
 

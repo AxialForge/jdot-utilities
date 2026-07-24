@@ -2,6 +2,18 @@
 
 All notable changes to Jdot Utilities. Dates are YYYY-MM-DD.
 
+## 1.1.0 — 2026-07-24
+
+- **Drag to reorder** in Merge PDFs and Images → PDF. Grab a file by the grip and
+  drop it where you want; a line shows where it will land. The up/down buttons
+  are still there for single steps and for keyboard use.
+- **CI now runs the Electron tests too.** The v1.0.0 pre-release crash (any batch
+  of four or more documents) got through because the automated build only ran the
+  plain-Node suite. The three Electron-hosted suites — PDF output, the render
+  pool, and the network-egress block — now run on every push and gate every
+  release, so that class of bug can't reach a build again. Fixed a stray typo in
+  the queue markup found along the way.
+
 ## 1.0.0 — 2026-07-24
 
 First stable release. This one is mostly about trust: an outside code review

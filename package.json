@@ -1,6 +1,6 @@
 {
   "name": "jdot-utilities",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Local, offline file utilities — conversion, PDF tools, and more. No cloud, no account, no upload.",
   "main": "src/main/main.js",
   "author": "Joe",

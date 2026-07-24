@@ -28,10 +28,13 @@ Two layers, because the PDF path needs Chromium:
   `pdfshrink`, `bmp`/`ico`, `engines`, the registry (incl. kinds/validation),
   and every non-PDF `document-convert` path. Runs in plain node.
 - Electron-hosted smoke tests (run directly): `npx electron test/electron-pdf.js`
-  (PDF output, pooled windows, `<base href>`, orientation) and
-  `npx electron test/electron-ops.js` (collect/explode via the discovered tools).
-  `npm run test:pdf` runs the first. **Anything touching PDF output or Electron
-  APIs goes here** — it cannot be covered by `npm test`.
+  (PDF output, pooled windows, `<base href>`, orientation),
+  `npx electron test/electron-ops.js` (collect/explode via the discovered tools),
+  and `npx electron test/electron-offline.js` (the render pool makes no remote
+  requests). `npm run test:pdf` runs the first. **Anything touching PDF output or
+  Electron APIs goes here** — it cannot be covered by `npm test`. **CI runs all
+  three** on every push and gates releases on them — a v1.0.0 crash slipped
+  through precisely because it once didn't.
 
 ## Architecture
 - **Main process** (`src/main/`, CommonJS): Electron entry, IPC, and all the
