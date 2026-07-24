@@ -227,6 +227,15 @@ To retheme, edit those token blocks only — all accent colour is confined to th
 - **Office needs LibreOffice installed** (not bundled — it's ~400 MB). `office.js`
   auto-detects it; `libreOfficePath` overrides. Each call uses a unique
   `-env:UserInstallation` profile so batch concurrency won't collide.
+  **That profile must be a real file URL** — build it with `pathToFileURL()`,
+  never `"file://" + dir`. The naive form yields `file://C:\Users\...` on Windows
+  (two slashes, backslashes), LibreOffice rejects it, and **every** Office
+  conversion fails while looking like a LibreOffice problem. Fixed in v0.8.0;
+  `test/office.test.js` asserts the URL shape even when LibreOffice is absent.
+- **The renderer's script is inside a wrapper function, so its internals cannot be
+  reached from a devtools console or `executeJavaScript`.** Test its pure logic by
+  lifting the function source out of `index.html` and running it in a `vm` (see
+  `test/pagepicker.test.js`) rather than keeping a second copy that will drift.
 - **HEIC decode** goes through `heic-convert` because sharp's prebuilt libvips
   usually omits HEIF decode.
 

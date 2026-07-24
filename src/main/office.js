@@ -7,6 +7,7 @@ const { execFile } = require("node:child_process");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
+const { pathToFileURL } = require("node:url");
 
 const CANDIDATES = {
   win32: [
@@ -31,7 +32,11 @@ async function convertOffice({ inputPath, outputPath, targetExt, sofficePath, on
     throw new Error("LibreOffice not found. Install it, or set its path in Settings.");
   }
   const outDir = fs.mkdtempSync(path.join(os.tmpdir(), "jdot-lo-"));
-  const profile = "file://" + fs.mkdtempSync(path.join(os.tmpdir(), "jdot-loprof-"));
+  // UserInstallation must be a real file URL. Concatenating "file://" onto a
+  // Windows path yields "file://C:\Users\..." — wrong scheme form AND backslashes
+  // — which LibreOffice rejects, so every Office conversion failed on Windows.
+  // pathToFileURL produces "file:///C:/Users/..." correctly on every platform.
+  const profile = pathToFileURL(fs.mkdtempSync(path.join(os.tmpdir(), "jdot-loprof-"))).href;
   onProgress?.(0.2);
 
   await new Promise((resolve, reject) => {

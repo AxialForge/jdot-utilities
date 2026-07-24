@@ -151,6 +151,19 @@ ipcMain.handle("path:reveal", (_e, p) => {
   if (p) shell.showItemInFolder(p);
 });
 
+// Size and timestamps for the queue's sort control. One call for the whole list;
+// a file that can't be stat'd still gets an entry so sorting stays stable.
+ipcMain.handle("files:stat", (_e, paths) =>
+  (Array.isArray(paths) ? paths : []).map((p) => {
+    try {
+      const s = fs.statSync(p);
+      return { path: p, size: s.size, modified: s.mtimeMs, created: s.birthtimeMs || s.ctimeMs };
+    } catch {
+      return { path: p, size: null, modified: null, created: null };
+    }
+  })
+);
+
 // ── Settings ──────────────────────────────────────────────────
 ipcMain.handle("settings:get", () => settings.readSync());
 ipcMain.handle("settings:set", (_e, patch) => settings.write(patch || {}));
@@ -279,3 +292,12 @@ ipcMain.handle("pdf:pageCount", (_e, p) => pageCount(p));
 
 // Page count plus a reason if the file can't be used (encrypted, corrupt, …).
 ipcMain.handle("pdf:inspect", (_e, p) => inspectPdf(p));
+
+// Page thumbnails for the visual page picker (Rotate / Delete / Extract).
+ipcMain.handle("pdf:thumbs", async (_e, p, options) => {
+  try {
+    return await require("./pdfthumbs").pdfThumbnails(p, options || {});
+  } catch (err) {
+    return { error: err.message || String(err) };
+  }
+});

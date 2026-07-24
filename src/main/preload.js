@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld("api", {
   pickFolder: () => ipcRenderer.invoke("folder:pick"),
   addFolderFiles: () => ipcRenderer.invoke("folder:listFiles"),
   reveal: (p) => ipcRenderer.invoke("path:reveal", p),
+  statFiles: (paths) => ipcRenderer.invoke("files:stat", paths),
 
   getSettings: () => ipcRenderer.invoke("settings:get"),
   setSettings: (patch) => ipcRenderer.invoke("settings:set", patch),
@@ -45,6 +46,7 @@ contextBridge.exposeInMainWorld("api", {
 
   pdfPageCount: (p) => ipcRenderer.invoke("pdf:pageCount", p),
   pdfInspect: (p) => ipcRenderer.invoke("pdf:inspect", p),
+  pdfThumbs: (p, options) => ipcRenderer.invoke("pdf:thumbs", p, options),
 
   pathForFile: (file) => {
     try { return webUtils.getPathForFile(file); } catch { return null; }

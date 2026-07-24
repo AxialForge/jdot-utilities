@@ -27,7 +27,27 @@ module.exports = {
   outputFormats: ["pdf"],
 
   options: [
-    { key: "preset", label: "Output", type: "select", choices: Object.keys(PRESETS), default: DEFAULT_PRESET },
+    {
+      key: "preset",
+      label: "Output",
+      type: "select",
+      choices: Object.keys(PRESETS),
+      default: DEFAULT_PRESET,
+      // Shown under the dropdown as the choice changes, so the difference
+      // between five similar-sounding presets is visible before running one.
+      choiceHelp: {
+        "Compress — small (screen)":
+          "Smallest file. Images drop to about 72 DPI. Good for email and on-screen reading; text stays sharp, photos get soft. Not for printing.",
+        "Compress — balanced (ebook)":
+          "The usual choice. Images at about 150 DPI — looks fine on screen and prints acceptably. Best size-to-quality trade.",
+        "Compress — high quality (printer)":
+          "Largest of the three. Images stay near 300 DPI for proper printing. Use when the PDF will be printed rather than just read.",
+        "Archive — PDF/A-2b":
+          "Not for shrinking — converts to the archival PDF/A format so the file still renders identically years from now. Embeds all fonts and colour data, so it usually gets BIGGER.",
+        "Archive — PDF/A-1b (strict)":
+          "The strictest archival level, required by some courts and government systems. Most compatible, but allows the fewest PDF features (no layers or transparency).",
+      },
+    },
   ],
 
   async convert({ inputPath, outputPath, options, onProgress }) {

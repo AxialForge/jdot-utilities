@@ -104,10 +104,29 @@
       .card-flow .arrow { color:var(--accent); margin:0 4px; }
       .summary { display:flex; align-items:center; gap:12px; margin:14px 0 4px; font-size:12.5px; }
       .summary .grow { flex:1; }
+      .sortbox { display:flex; align-items:center; gap:6px; }
+      .sortbox label { font-size:11px; letter-spacing:.06em; text-transform:uppercase; }
+      .sortbox select { background:var(--panel-2); color:var(--text); border:1px solid var(--line);
+        border-radius:6px; padding:4px 7px; font-family:inherit; font-size:12px; }
       .bar { height:6px; background:var(--panel-2); border-radius:4px; overflow:hidden; margin:2px 0 10px; }
       .bar > i { display:block; height:100%; width:0; background:var(--accent); transition:width .2s; }
       .queue { display:flex; flex-direction:column; gap:5px; }
-      .job { display:grid; grid-template-columns:12px 1fr auto auto; align-items:center; gap:12px; padding:9px 12px; background:var(--panel); border:1px solid var(--line); border-radius:6px; }
+      /* Flex, not grid: the row has a different number of children depending on
+         whether the tool is reorderable, and a fixed column template left the
+         extra controls auto-placed in arbitrary cells. */
+      .job { display:flex; align-items:center; gap:12px; padding:9px 12px; background:var(--panel); border:1px solid var(--line); border-radius:6px; }
+      .job-idx { flex:0 0 auto; min-width:26px; text-align:center; }
+      .job > .job-name { flex:1 1 auto; min-width:0; }
+      .job > .flow { flex:0 0 auto; }
+      /* One fixed-width control cluster, so the buttons line up down the list
+         however long or short the filenames are. */
+      .job-acts { flex:0 0 auto; display:flex; align-items:center; gap:2px; margin-left:2px; }
+      .job-move { display:flex; flex-direction:column; gap:1px; margin-right:4px; }
+      .job-move button { border:1px solid var(--line); background:var(--panel-2); color:var(--muted);
+        width:22px; height:15px; line-height:1; padding:0; border-radius:4px; cursor:pointer;
+        font-size:9px; display:flex; align-items:center; justify-content:center; font-family:inherit; }
+      .job-move button:hover:not(:disabled) { color:var(--accent); border-color:var(--accent); background:var(--accent-dim); }
+      .job-move button:disabled { opacity:.3; cursor:default; }
       .led { width:9px; height:9px; border-radius:50%; background:var(--muted); }
       .led.busy { background:var(--accent); animation:pulse 1s infinite; }
       .led.ok { background:var(--ok); } .led.err { background:var(--err); }
@@ -118,8 +137,44 @@
       .chip { font-family:ui-monospace,Consolas,monospace; font-size:11px; padding:2px 7px; border-radius:4px; background:var(--panel-2); color:var(--muted); text-transform:uppercase; }
       .chip.out { background:var(--accent-dim); color:var(--accent); }
       .arrow { color:var(--muted); }
+      .job-note { font-size:11.5px; color:var(--ok); white-space:nowrap; }
+      .job-note.err { color:var(--err); }
       .job-x { border:0; background:transparent; color:var(--muted); cursor:pointer; font-size:15px; }
       .job-x:hover { color:var(--err); }
+
+      .opt-help { font-size:11.5px; color:var(--muted); line-height:1.45; margin-top:5px;
+        padding-left:8px; border-left:2px solid var(--line); }
+
+      /* ── Visual page picker ─────────────────────────────────── */
+      .pages { border:1px solid var(--line); border-radius:9px; background:var(--panel);
+        padding:12px; margin:0 0 12px; }
+      .pages-head { display:flex; align-items:center; gap:10px; margin-bottom:10px; font-size:12.5px; }
+      .pages-head .grow { flex:1; }
+      .pages-title { font-weight:650; }
+      .pages-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(116px,1fr));
+        gap:10px; max-height:340px; overflow-y:auto; padding:2px; }
+      .pg { position:relative; border:2px solid var(--line); border-radius:7px; background:var(--panel-2);
+        padding:5px; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:5px;
+        transition:border-color .12s, background .12s; }
+      .pg:hover { border-color:var(--accent); }
+      .pg img { max-width:100%; height:auto; display:block; border-radius:3px;
+        background:#fff; transition:transform .18s; }
+      .pg-no { font-size:11px; color:var(--muted); font-family:ui-monospace,Consolas,monospace; }
+      /* Selected meaning differs per tool, so the colour is set by a modifier on
+         the grid rather than baked into .pg. */
+      .pages-grid.mark-keep .pg.sel { border-color:var(--ok); background:rgba(95,208,138,.12); }
+      .pages-grid.mark-keep .pg.sel .pg-no { color:var(--ok); }
+      .pages-grid.mark-drop .pg.sel { border-color:var(--err); background:rgba(224,115,108,.12); }
+      .pages-grid.mark-drop .pg.sel .pg-no { color:var(--err); }
+      .pages-grid.mark-drop .pg.sel img { opacity:.45; }
+      .pages-grid.mark-turn .pg.sel { border-color:var(--accent); background:var(--accent-dim); }
+      .pages-grid.mark-turn .pg.sel .pg-no { color:var(--accent); }
+      .pg-badge { position:absolute; top:4px; right:4px; font-size:9px; font-weight:700;
+        padding:1px 5px; border-radius:4px; background:var(--panel); border:1px solid var(--line); color:var(--muted); }
+      .pages-grid.mark-drop .pg.sel .pg-badge { color:var(--err); border-color:var(--err); }
+      .pages-grid.mark-keep .pg.sel .pg-badge { color:var(--ok); border-color:var(--ok); }
+      .pages-more { font-size:11.5px; margin-top:8px; }
+      .pages-empty { font-size:12.5px; color:var(--muted); padding:14px 2px; }
 
       .controls { width:250px; background:var(--panel); border-left:1px solid var(--line); padding:16px; overflow-y:auto; }
       .ctl-head { padding-bottom:10px; }
@@ -227,8 +282,32 @@
               </div>
               <div class="accept mono" id="accept"></div>
             </div>
-            <div class="summary"><span id="sumText" class="grow muted">No files yet.</span><span class="muted" id="pctText"></span></div>
+            <div class="summary">
+              <span id="sumText" class="grow muted">No files yet.</span>
+              <span class="sortbox" id="sortBox" hidden>
+                <label class="muted" for="sortSelect">Sort</label>
+                <select id="sortSelect"></select>
+                <button class="btn small" id="sortApply" title="Apply this order to the list">Apply</button>
+              </span>
+              <span class="muted" id="pctText"></span>
+            </div>
             <div class="bar"><i id="barFill"></i></div>
+
+            <!-- Visual page picker for Rotate / Delete / Extract. Selecting
+                 pages here writes the range field, and vice versa. -->
+            <div class="pages" id="pagesPane" hidden>
+              <div class="pages-head">
+                <span class="pages-title" id="pagesTitle">Pages</span>
+                <span class="muted" id="pagesHint"></span>
+                <span class="grow"></span>
+                <button class="btn small" id="pagesAll">Select all</button>
+                <button class="btn small" id="pagesNone">Clear</button>
+                <button class="btn small" id="pagesInvert">Invert</button>
+              </div>
+              <div class="pages-grid" id="pagesGrid"></div>
+              <div class="pages-more muted" id="pagesMore" hidden></div>
+            </div>
+
             <div class="queue" id="queue"></div>
           </div>
         </div>
@@ -390,12 +469,23 @@
         { id:"pdf-shrink", name:"Shrink PDF (built-in)", kind:"convert", category:"PDF",
           description:"Make a PDF smaller with no extra software installed. Best for scans and image-heavy files. Pages become images, so text is no longer selectable — use Compress / PDF-A to keep text.",
           inputFormats:["pdf"], outputFormats:["pdf"], options:[
-            {key:"preset",label:"Amount",type:"select",choices:["Smallest (72 DPI, grey)","Small (100 DPI)","Balanced (150 DPI)","High quality (200 DPI)"],default:"Balanced (150 DPI)"},
+            {key:"preset",label:"Amount",type:"select",choices:["Smallest (72 DPI, grey)","Small (100 DPI)","Balanced (150 DPI)","High quality (200 DPI)"],default:"Balanced (150 DPI)",
+             choiceHelp:{
+               "Smallest (72 DPI, grey)":"Biggest reduction. Colour is dropped and pages render at 72 DPI. Ideal for emailing a bulky scan when it only needs to be readable.",
+               "Small (100 DPI)":"Strong reduction, colour kept. Fine for reading on screen; text will look a little soft when zoomed.",
+               "Balanced (150 DPI)":"The usual choice. Clearly readable on screen and prints acceptably, while still cutting most scanned files down a lot.",
+               "High quality (200 DPI)":"Mildest reduction, closest to the original. Use when the result still needs to print well."}},
             {key:"skipIfLarger",label:"Keep the original if shrinking makes it bigger",type:"boolean",default:true}] },
         { id:"pdf-optimize", name:"Compress / PDF-A", kind:"convert", category:"PDF", requiresEngine:"ghostscript",
           description:"Shrink a PDF, or convert it to archival PDF/A. Requires Ghostscript (bundled, or installed).",
           inputFormats:["pdf"], outputFormats:["pdf"], options:[
-            {key:"preset",label:"Output",type:"select",choices:["Compress — small (screen)","Compress — balanced (ebook)","Compress — high quality (printer)","Archive — PDF/A-2b","Archive — PDF/A-1b (strict)"],default:"Compress — balanced (ebook)"}] },
+            {key:"preset",label:"Output",type:"select",choices:["Compress — small (screen)","Compress — balanced (ebook)","Compress — high quality (printer)","Archive — PDF/A-2b","Archive — PDF/A-1b (strict)"],default:"Compress — balanced (ebook)",
+             choiceHelp:{
+               "Compress — small (screen)":"Smallest file. Images drop to about 72 DPI. Good for email and on-screen reading; text stays sharp, photos get soft. Not for printing.",
+               "Compress — balanced (ebook)":"The usual choice. Images at about 150 DPI — looks fine on screen and prints acceptably. Best size-to-quality trade.",
+               "Compress — high quality (printer)":"Largest of the three. Images stay near 300 DPI for proper printing. Use when the PDF will be printed rather than just read.",
+               "Archive — PDF/A-2b":"Not for shrinking — converts to the archival PDF/A format so the file still renders identically years from now. Embeds all fonts and colour data, so it usually gets BIGGER.",
+               "Archive — PDF/A-1b (strict)":"The strictest archival level, required by some courts and government systems. Most compatible, but allows the fewest PDF features (no layers or transparency)."}}] },
         { id:"pdf-watermark", name:"Watermark PDF", kind:"convert", category:"PDF",
           description:"Stamp diagonal text (e.g. DRAFT, CONFIDENTIAL) across every page.",
           inputFormats:["pdf"], outputFormats:["pdf"], options:[
@@ -603,6 +693,9 @@
         refreshFormats();
         renderOptions(C.active.options||[]); renderQueue(); updateConvert();
         paintEngineWarn();
+        // Switching tools clears the queue, so drop any rendered pages with it.
+        P.path=null; P.sel.clear(); P.thumbs=[]; P.token++;
+        refreshPicker();
       }
       function renderOptions(opts){
         const w=$("optionFields"); w.innerHTML="";
@@ -618,7 +711,24 @@
             if (opt.key==="pageSize") inp.value=SETTINGS.pdfPageSize; }
           else if (opt.type==="boolean"){ inp=document.createElement("input"); inp.type="checkbox"; inp.checked=!!opt.default; inp.style.width="auto"; inp.style.justifySelf="start"; }
           else { inp=document.createElement("input"); inp.type=opt.type==="number"?"number":"text"; if(opt.min!=null)inp.min=opt.min; if(opt.max!=null)inp.max=opt.max; if(opt.default!=null)inp.value=opt.default; }
-          inp.dataset.key=opt.key; inp.dataset.type=opt.type||"text"; lab.appendChild(inp); w.appendChild(lab);
+          inp.dataset.key=opt.key; inp.dataset.type=opt.type||"text"; lab.appendChild(inp);
+
+          // A descriptor can explain each choice (`choiceHelp`). Presets with
+          // similar names — five flavours of "compress" — are otherwise a guess.
+          // Keep the picker in step with hand-typed ranges and rotation changes.
+          if(opt.key==="spec"){
+            inp.addEventListener("input", ()=>{ syncFromField(); drawPages(); });
+          } else if(opt.key==="angle"){
+            inp.addEventListener("change", drawPages);
+          }
+
+          if(opt.type==="select" && opt.choiceHelp){
+            const help=document.createElement("div"); help.className="opt-help";
+            const paint=()=>{ help.textContent = opt.choiceHelp[inp.value] || ""; };
+            paint(); inp.addEventListener("change", paint);
+            lab.appendChild(help);
+          }
+          w.appendChild(lab);
         });
       }
       function collectOptions(){
@@ -694,6 +804,8 @@
           j.info = await api.pdfInspect(j.path); changed=true;
         }
         if(changed){ renderQueue(); updateConvert(); }
+        // Page counts have arrived, so the picker can render its thumbnails.
+        refreshPicker();
       }
 
       function renderQueue(){
@@ -708,22 +820,227 @@
             : job.info?.pages!=null ? `<span class="chip">${job.info.pages} pages</span>`
             : `<span class="chip">${job.ext||"?"}</span><span class="arrow">&rarr;</span><span class="chip out">${ok?(isConvert()?outFmt:C.active.outputFormats[0]):"—"}</span>`;
           const mv = ordered
-            ? `<button class="job-x" data-up="${i}" ${i===0?"disabled":""}>&uarr;</button><button class="job-x" data-dn="${i}" ${i===last?"disabled":""}>&darr;</button>`
+            ? `<span class="job-move"><button data-up="${i}" ${i===0?"disabled":""} title="Move up">&#9650;</button><button data-dn="${i}" ${i===last?"disabled":""} title="Move down">&#9660;</button></span>`
             : "";
           return `
           <div class="job" data-i="${i}"><span class="led"></span>
-            ${ordered?`<span class="chip">${i+1}</span>`:""}
+            ${ordered?`<span class="chip job-idx">${i+1}</span>`:""}
             <span class="job-name ${ok?"":"reject"}" title="${job.path}">${job.name}</span>
             <span class="flow">${detail}</span>
-            ${mv}<button class="job-x" data-rm="${i}">&times;</button></div>`;
+            <span class="job-acts">${mv}<button class="job-x" data-rm="${i}" title="Remove">&times;</button></span></div>`;
         }).join("");
 
-        const redraw = ()=>{ refreshFormats(); renderQueue(); updateConvert(); };
+        const redraw = ()=>{ refreshFormats(); renderQueue(); updateConvert(); refreshPicker(); };
         q.querySelectorAll("[data-rm]").forEach((b)=> b.onclick=()=>{ C.jobs.splice(+b.dataset.rm,1); redraw(); });
         q.querySelectorAll("[data-up]").forEach((b)=> b.onclick=()=> moveJob(+b.dataset.up,-1));
         q.querySelectorAll("[data-dn]").forEach((b)=> b.onclick=()=> moveJob(+b.dataset.dn, 1));
         updateSummary();
       }
+      // ── Visual page picker ─────────────────────────────────────
+      // Rotate / Delete / Extract all take a page range typed as "1-3,5". Typing
+      // that blind means opening the PDF in another app first, so the same range
+      // can be built by clicking thumbnails. The text field stays the source of
+      // truth — this just reads and writes it — so nothing else has to change.
+      //
+      // `sel` is a Set of 1-based page numbers.
+      const PAGE_TOOLS = {
+        "pdf-rotate":  { mark:"mark-turn", verb:"rotate", blank:"all pages",
+                         title:"Pages to rotate", hint:"Click pages to rotate. Leave none selected to rotate every page." },
+        "pdf-delete":  { mark:"mark-drop", verb:"delete", blank:"none",
+                         title:"Pages to delete", hint:"Click the pages to remove. The rest are kept." },
+        "pdf-extract": { mark:"mark-keep", verb:"keep",   blank:"none",
+                         title:"Pages to keep",   hint:"Click the pages to keep. Everything else is dropped." },
+      };
+      const P = { path:null, total:0, sel:new Set(), thumbs:[], token:0 };
+
+      // "1-3,5" -> Set{1,2,3,5}. Tolerant of junk mid-typing; the main process
+      // re-parses authoritatively with pagespec.js when the tool actually runs.
+      function specToSet(spec, total){
+        const out=new Set();
+        for(const part of String(spec||"").split(",")){
+          const t=part.trim(); if(!t) continue;
+          const m=t.match(/^(\d+)\s*-\s*(\d*)$/);
+          if(m){
+            const a=+m[1], b=m[2]===""?total:+m[2];
+            for(let n=Math.max(1,Math.min(a,b)); n<=Math.min(total,Math.max(a,b)); n++) out.add(n);
+          } else if(/^\d+$/.test(t)){
+            const n=+t; if(n>=1&&n<=total) out.add(n);
+          }
+        }
+        return out;
+      }
+      // Set{1,2,3,5} -> "1-3,5" — collapse runs so the field stays readable.
+      function setToSpec(sel){
+        const ns=[...sel].sort((a,b)=>a-b); if(!ns.length) return "";
+        const parts=[]; let start=ns[0], prev=ns[0];
+        for(let i=1;i<=ns.length;i++){
+          const n=ns[i];
+          if(n!==prev+1){ parts.push(start===prev?`${start}`:`${start}-${prev}`); start=n; }
+          prev=n;
+        }
+        return parts.join(", ");
+      }
+
+      const specField = ()=> document.querySelector('#optionFields [data-key="spec"]');
+      const angleField = ()=> document.querySelector('#optionFields [data-key="angle"]');
+
+      // Should the picker be showing, and for which file?
+      function pickerTarget(){
+        const cfg = C.active ? PAGE_TOOLS[C.active.id] : null;
+        if(!cfg || !hasApi) return null;
+        // These are convert tools, so a batch is possible; preview the first
+        // readable PDF and say so rather than pretending it covers all of them.
+        const hit = C.jobs.find((j)=> j.ext==="pdf" && !j.info?.error);
+        return hit ? { cfg, job:hit } : null;
+      }
+
+      async function refreshPicker(){
+        const target = pickerTarget();
+        const pane=$("pagesPane");
+        if(!target){ pane.hidden=true; P.path=null; return; }
+        pane.hidden=false;
+
+        const { cfg, job } = target;
+        $("pagesTitle").textContent = cfg.title;
+        $("pagesHint").textContent = C.jobs.filter((j)=>j.ext==="pdf").length>1
+          ? `previewing ${job.name} — the range applies to every file` : cfg.hint;
+        $("pagesGrid").className = "pages-grid " + cfg.mark;
+
+        if(P.path!==job.path){
+          P.path=job.path; P.thumbs=[]; P.total=job.info?.pages||0;
+          $("pagesGrid").innerHTML = `<div class="pages-empty">Rendering pages…</div>`;
+          const token = ++P.token;
+          const res = await api.pdfThumbs(job.path, { width:116, limit:150 });
+          if(token!==P.token || P.path!==job.path) return; // superseded
+          if(res?.error){
+            $("pagesGrid").innerHTML="";
+            const d=document.createElement("div"); d.className="pages-empty";
+            d.textContent="Couldn't render pages: "+res.error; $("pagesGrid").appendChild(d);
+            return;
+          }
+          P.thumbs=res.thumbs||[]; P.total=res.total||P.thumbs.length;
+          $("pagesMore").hidden=!res.truncated;
+          if(res.truncated) $("pagesMore").textContent =
+            `Showing the first ${P.thumbs.length} of ${P.total} pages. Pages beyond that still work — type them in the range field.`;
+        }
+        syncFromField();
+        drawPages();
+      }
+
+      function drawPages(){
+        const grid=$("pagesGrid"); grid.innerHTML="";
+        if(!P.thumbs.length){
+          const d=document.createElement("div"); d.className="pages-empty";
+          d.textContent="No pages to show."; grid.appendChild(d); return;
+        }
+        const cfg = PAGE_TOOLS[C.active?.id]; if(!cfg) return;
+        const angle = C.active?.id==="pdf-rotate" ? Number(angleField()?.value||0) : 0;
+        const rotatingAll = C.active?.id==="pdf-rotate" && P.sel.size===0;
+
+        for(const t of P.thumbs){
+          const on = P.sel.has(t.page);
+          const cell=document.createElement("div");
+          cell.className="pg"+(on?" sel":"");
+          cell.dataset.page=t.page;
+
+          const img=document.createElement("img");
+          img.src=t.url; img.alt=`Page ${t.page}`; img.loading="lazy";
+          // Live rotation preview: turn the thumbnail by the chosen angle so the
+          // result is visible before running anything.
+          if(angle && (on || rotatingAll)) img.style.transform=`rotate(${angle}deg)`;
+          cell.appendChild(img);
+
+          const no=document.createElement("span"); no.className="pg-no";
+          no.textContent=t.page; cell.appendChild(no);
+
+          if(on || (rotatingAll && angle)){
+            const b=document.createElement("span"); b.className="pg-badge";
+            b.textContent = C.active.id==="pdf-delete" ? "REMOVE"
+              : C.active.id==="pdf-extract" ? "KEEP" : `${angle}°`;
+            cell.appendChild(b);
+          }
+
+          cell.onclick=()=>{ P.sel.has(t.page)?P.sel.delete(t.page):P.sel.add(t.page); pushToField(); drawPages(); };
+          grid.appendChild(cell);
+        }
+      }
+
+      // Selection -> range field.
+      function pushToField(){
+        const f=specField(); if(!f) return;
+        f.value=setToSpec(P.sel);
+      }
+      // Range field -> selection.
+      function syncFromField(){
+        const f=specField();
+        P.sel = f ? specToSet(f.value, P.total||9999) : new Set();
+      }
+
+      $("pagesAll").onclick=()=>{ P.thumbs.forEach((t)=>P.sel.add(t.page)); pushToField(); drawPages(); };
+      $("pagesNone").onclick=()=>{ P.sel.clear(); pushToField(); drawPages(); };
+      $("pagesInvert").onclick=()=>{
+        for(const t of P.thumbs){ P.sel.has(t.page)?P.sel.delete(t.page):P.sel.add(t.page); }
+        pushToField(); drawPages();
+      };
+
+      // ── Sorting the queue ──────────────────────────────────────
+      // Matters most for Merge PDFs, where list order is page order, but it is
+      // available for any tool. Size/date need a stat() from the main process;
+      // those entries are hidden when there is no bridge (Preview mode).
+      //
+      // localeCompare with numeric:true so "page2" sorts before "page10", which
+      // plain string comparison gets backwards — exactly the case that bites
+      // when merging scanned pages.
+      const collator = new Intl.Collator(undefined, { numeric:true, sensitivity:"base" });
+      const SORTS = {
+        "name-asc":  { label:"Name (A to Z)",            needsStat:false, cmp:(a,b)=> collator.compare(a.name,b.name) },
+        "name-desc": { label:"Name (Z to A)",            needsStat:false, cmp:(a,b)=> collator.compare(b.name,a.name) },
+        "type":      { label:"File type, then name",     needsStat:false, cmp:(a,b)=> collator.compare(a.ext||"",b.ext||"") || collator.compare(a.name,b.name) },
+        "mod-desc":  { label:"Date modified (newest)",   needsStat:true,  cmp:(a,b)=> num(b.modified)-num(a.modified) },
+        "mod-asc":   { label:"Date modified (oldest)",   needsStat:true,  cmp:(a,b)=> num(a.modified)-num(b.modified) },
+        "cre-desc":  { label:"Date created (newest)",    needsStat:true,  cmp:(a,b)=> num(b.created)-num(a.created) },
+        "cre-asc":   { label:"Date created (oldest)",    needsStat:true,  cmp:(a,b)=> num(a.created)-num(b.created) },
+        "size-desc": { label:"Size (largest first)",     needsStat:true,  cmp:(a,b)=> num(b.size)-num(a.size) },
+        "size-asc":  { label:"Size (smallest first)",    needsStat:true,  cmp:(a,b)=> num(a.size)-num(b.size) },
+        "reverse":   { label:"Reverse current order",    needsStat:false, cmp:null },
+      };
+      // Missing stats sort last rather than jumping to the top as 0.
+      const num = (v)=> (v==null || Number.isNaN(v)) ? -Infinity : v;
+
+      function fillSortOptions(){
+        const sel=$("sortSelect"); if(!sel || sel.options.length) return;
+        for(const [key,s] of Object.entries(SORTS)){
+          if(s.needsStat && !hasApi) continue; // no stat() without the bridge
+          const o=document.createElement("option"); o.value=key; o.textContent=s.label; sel.appendChild(o);
+        }
+      }
+
+      // Pull size/timestamps once per file, then keep them on the job.
+      async function ensureStats(){
+        if(!hasApi) return;
+        const missing = C.jobs.filter((j)=> j.size===undefined);
+        if(!missing.length) return;
+        try{
+          const stats = await api.statFiles(missing.map((j)=>j.path));
+          const byPath = new Map(stats.map((s)=>[s.path,s]));
+          for(const j of missing){
+            const s = byPath.get(j.path) || {};
+            j.size=s.size ?? null; j.modified=s.modified ?? null; j.created=s.created ?? null;
+          }
+        }catch{
+          for(const j of missing){ j.size=null; j.modified=null; j.created=null; }
+        }
+      }
+
+      async function applySort(){
+        const key=$("sortSelect").value; const s=SORTS[key]; if(!s) return;
+        if(s.needsStat) await ensureStats();
+        if(key==="reverse") C.jobs.reverse();
+        else C.jobs.sort(s.cmp);
+        renderQueue();
+        setStatus(`Sorted by ${s.label.toLowerCase()}.`);
+      }
+
       function moveJob(i,d){
         const j=i+d; if(j<0||j>=C.jobs.length) return;
         [C.jobs[i],C.jobs[j]]=[C.jobs[j],C.jobs[i]];
@@ -745,6 +1062,8 @@
       function updateSummary(){
         const total=C.jobs.length, ok=eligible().length, skip=total-ok;
         $("sumText").textContent = total===0 ? "No files yet." : `${total} file${total>1?"s":""} · ${ok} ready${skip?` · ${skip} skipped`:""}`;
+        // Sorting one file is meaningless; show the control once there's a list.
+        const sb=$("sortBox"); if(sb) sb.hidden = total<2;
         const pct = ok? Math.round((C.done/ok)*100):0;
         $("pctText").textContent = C.done? `${C.done}/${ok} done` : "";
         $("barFill").style.width = (C.done?pct:0)+"%";
@@ -757,9 +1076,11 @@
       async function addFilesAction(){ if(hasApi) addPaths(await api.pickFiles()); else $("fileInput").click(); }
       async function addFolderAction(){ if(hasApi) addPaths(await api.addFolderFiles()); else setStatus("Folder import runs in the installed app."); }
       $("addFiles").onclick=addFilesAction; $("addFolder").onclick=addFolderAction;
-      $("clearFiles").onclick=()=>{ C.jobs=[]; C.done=0; C.result=null; $("runNote").textContent=""; $("barFill").style.width="0%"; renderQueue(); updateConvert(); };
+      $("clearFiles").onclick=()=>{ C.jobs=[]; C.done=0; C.result=null; $("runNote").textContent=""; $("barFill").style.width="0%";
+        P.path=null; P.sel.clear(); P.thumbs=[]; P.token++; renderQueue(); updateConvert(); refreshPicker(); };
       $("fileInput").onchange=(e)=>{ const p=[...e.target.files].map((f)=>f.name); C.home ? routeFiles(p) : addPaths(p); e.target.value=""; };
       $("formatSelect").onchange=renderQueue;
+      $("sortApply").onclick=applySort;
 
       const pathsFrom=(ev)=>{ const out=[]; for(const f of ev.dataTransfer.files){ const p=hasApi?api.pathForFile(f):f.name; if(p) out.push(p); } return out; };
       function wireDrop(el, handler){
@@ -841,8 +1162,21 @@
         api.onStarted((d)=>{ C.jobId=d.jobId; });
         api.onFileDone((r)=>{
           const row = C.rowFor ? C.rowFor[r.index] : r.index;
-          const led=document.querySelector(`.job[data-i="${row}"] .led`);
+          const el=document.querySelector(`.job[data-i="${row}"]`);
+          const led=el?.querySelector(".led");
           if(led) led.className="led "+(r.ok?"ok":(r.cancelled?"":"err"));
+
+          // A tool can report what it actually did (Shrink PDF: the size saved).
+          // Replace the format chips, which are stale once the file is written.
+          if(el && r.note){
+            const flow=el.querySelector(".flow");
+            if(flow){ flow.textContent=""; const n=document.createElement("span");
+              n.className="job-note"; n.textContent=r.note; flow.appendChild(n); }
+          } else if(el && !r.ok && r.error){
+            const flow=el.querySelector(".flow");
+            if(flow){ flow.textContent=""; const n=document.createElement("span");
+              n.className="job-note err"; n.textContent=r.error; flow.appendChild(n); }
+          }
           C.done++; updateSummary();
         });
         // collect/explode report one overall fraction rather than per-file.
@@ -942,7 +1276,8 @@
       (async ()=>{
         if(hasApi){ const info=await api.info(); $("appName").textContent=info.name; document.title=info.name+" "+info.version; $("ver").textContent="v"+info.version; SETTINGS=await api.getSettings(); C.tools=await api.listTools(); }
         else { $("previewBadge").hidden=false; $("ver").textContent="preview"; C.tools=FALLBACK_TOOLS; }
-        applyTheme(SETTINGS.theme); paintSettings(); refreshOffice(); refreshGs(); setSaveLine(); updateSummary();
+        applyTheme(SETTINGS.theme); paintSettings(); refreshOffice(); refreshGs(); setSaveLine();
+        fillSortOptions(); updateSummary();
         // Open on the Convert section (its first tool selected by showTab).
         showTab("convert");
         // After the first paint: a missing engine is worth saying up front, but

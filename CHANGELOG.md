@@ -2,6 +2,50 @@
 
 All notable changes to Jdot Utilities. Dates are YYYY-MM-DD.
 
+## 0.8.0 — 2026-07-23
+
+A working-with-PDFs release: see the pages you're operating on, understand what
+the options do, and know what actually happened.
+
+### Fix: Office conversion never worked on Windows
+Word, spreadsheet, and presentation conversions failed on every Windows machine,
+even with LibreOffice correctly installed. The private profile passed to
+LibreOffice was built by gluing `file://` onto a Windows path, producing
+`file://C:\Users\...` — wrong URL form and backslashes — which LibreOffice
+rejects, so every conversion errored out. Now built with `pathToFileURL()`.
+Verified end to end against a real LibreOffice install, including two
+conversions running at once.
+
+### Page picker for Rotate, Delete, and Extract
+- These tools now show **thumbnails of every page**, and you pick pages by
+  clicking instead of typing numbers blind.
+- **Rotate** previews the turn live — the thumbnails rotate as you change the
+  angle, so you can see the result before running it.
+- **Delete** marks pages in red; **Extract** marks kept pages in green.
+- Select all / Clear / Invert, and the range field and the thumbnails stay in
+  sync in both directions — type `1-3, 5` and those pages highlight, or click
+  pages and the field fills itself in.
+
+### Merge PDFs: reorder controls fixed, and sorting added
+- The up/down buttons were scattered across the row because the layout reserved
+  fewer columns than the row actually used. They're now a proper paired control
+  in a fixed position down the whole list.
+- New **Sort** control for the file list: name A-Z / Z-A, file type, date
+  modified, date created, and size — plus reverse. Sorting is natural-order, so
+  `page2` comes before `page10` rather than after it.
+
+### Clearer options and results
+- **Compress / PDF-A** and **Shrink PDF** now explain each preset as you select
+  it — what it does, roughly what quality to expect, and when not to use it
+  (including that PDF/A usually makes files *bigger*).
+- **Shrink PDF** reports the actual result per file — `4.2 MB to 780 KB (81%
+  smaller)` — or says plainly when it kept the original because shrinking would
+  not have helped.
+
+### Tests
+- 217 tests, up from 193. Includes an exhaustive check that every possible page
+  selection survives the round trip through the range field.
+
 ## 0.7.2 — 2026-07-23
 
 **This is the release that actually fixes 0.7.0. Use this one.**

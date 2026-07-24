@@ -72,7 +72,10 @@ async function runBatch({
 
       try {
         const outputPath = outputPathFor(inputPath, outputFormat, outputDir, reserved);
-        await tool.convert({
+        // A tool may return details about what it did. `note` is a short string
+        // the UI shows next to the file — e.g. Shrink PDF reporting how much
+        // smaller the result actually got, which is the whole point of running it.
+        const detail = await tool.convert({
           inputPath,
           outputPath,
           outputFormat,
@@ -81,6 +84,10 @@ async function runBatch({
           onProgress: (fraction) => onProgress?.({ index: i, name, fraction }),
         });
         results[i] = { index: i, name, ok: true, outputPath };
+        if (detail && typeof detail === "object") {
+          if (typeof detail.note === "string") results[i].note = detail.note;
+          results[i].detail = detail;
+        }
       } catch (err) {
         const cancelled = isCancel(err);
         results[i] = {
