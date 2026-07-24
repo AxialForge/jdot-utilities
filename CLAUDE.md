@@ -5,7 +5,12 @@ account, no upload — files never leave the machine. Packaged as a Windows `.ex
 Built around a **tool registry** so adding a converter is one self-describing file.
 
 ## Non-negotiables (don't regress these)
-- **Fully offline.** No network calls at runtime, no telemetry, no accounts.
+- **Offline by default; one disclosed exception.** No telemetry, no accounts, and
+  **nothing** contacts the network on its own. The single exception is the manual
+  updater (`src/main/updater.js`), which hits GitHub **only** when the user clicks
+  Settings → Check for updates. There is deliberately no launch check, no
+  interval, and no auto-download/auto-install. Do not add any automatic network
+  call — the whole product promise depends on it.
 - **Extensible by one file.** A tool is auto-discovered from `src/tools/`; never
   add a central switchboard the user has to edit.
 - **Ships as a Windows `.exe`** via electron-builder (NSIS + portable).
@@ -257,6 +262,19 @@ To retheme, edit those token blocks only — all accent colour is confined to th
   (two slashes, backslashes), LibreOffice rejects it, and **every** Office
   conversion fails while looking like a LibreOffice problem. Fixed in v0.8.0;
   `test/office.test.js` asserts the URL shape even when LibreOffice is absent.
+- **The updater (`updater.js`) is manual-only and lazy-loaded.** `require("electron-updater")`
+  reads `app.getVersion()` at import, so it can only be required inside Electron —
+  it is loaded inside `configure()`, never at module scope, so the pure version
+  comparator stays testable in plain `node` and `npm test` needs no Electron. In
+  dev (unpacked) electron-updater silently no-ops and fires **no event**, which
+  would hang the UI on "Checking…", so `check()` guards on `isUpdaterActive()`
+  and reports a friendly message instead. `autoDownload`/`autoInstallOnAppQuit`
+  are both **false** — nothing fetches or installs without a click.
+- **Artifact names must be space-free** (`electron-builder.yml` sets
+  `artifactName: ${name}-${version}-...`). With a space, the on-disk file,
+  the URL in `latest.yml` (hyphenated), and the uploaded GitHub asset (spaces →
+  dots) all disagree, and the updater's download 404s. CI uploads `latest.yml` +
+  `*.blockmap` alongside the `.exe` or the updater has nothing to read.
 - **The renderer's script is inside a wrapper function, so its internals cannot be
   reached from a devtools console or `executeJavaScript`.** Test its pure logic by
   lifting the function source out of `index.html` and running it in a `vm` (see

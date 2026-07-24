@@ -18,6 +18,15 @@ contextBridge.exposeInMainWorld("api", {
   openEngineDownload: (id) => ipcRenderer.invoke("engines:openDownload", id),
   canInstallEngine: () => ipcRenderer.invoke("engines:canInstall"),
   gpuStatus: () => ipcRenderer.invoke("gpu:status"),
+
+  checkForUpdates: () => ipcRenderer.invoke("update:check"),
+  downloadUpdate: () => ipcRenderer.invoke("update:download"),
+  installUpdate: () => ipcRenderer.invoke("update:install"),
+  onUpdateStatus: (cb) => {
+    const h = (_e, d) => cb(d);
+    ipcRenderer.on("update:status", h);
+    return () => ipcRenderer.removeListener("update:status", h);
+  },
   installEngine: (id) => ipcRenderer.invoke("engines:install", id),
   onEngineInstallProgress: (cb) => {
     const h = (_e, d) => cb(d);
