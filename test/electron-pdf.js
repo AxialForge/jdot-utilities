@@ -90,6 +90,44 @@ app.whenReady().then(async () => {
     );
   });
 
+  await check("docx -> pdf renders the real document (color + B&W)", async () => {
+    // Build a .docx fixture at test time (html-to-docx is already a dependency),
+    // with a coloured table cell so the greyscale option is observable. This
+    // exercises the docx-preview render path end to end in Electron.
+    const htmlToDocx = require("html-to-docx");
+    const d = work();
+    const src = path.join(d, "form.docx");
+    const html =
+      "<!doctype html><html><head><meta charset='utf-8'></head><body>" +
+      "<h1>Shift Log</h1>" +
+      "<table><tr><td style='background-color:#ff0000'>Red header</td><td>Value</td></tr>" +
+      "<tr><td style='background-color:#00b050'>Green header</td><td>Other</td></tr></table>" +
+      "</body></html>";
+    const buf = await htmlToDocx(html);
+    fs.writeFileSync(src, Buffer.isBuffer(buf) ? buf : Buffer.from(await buf.arrayBuffer()));
+
+    const color = path.join(d, "color.pdf");
+    const bw = path.join(d, "bw.pdf");
+    await tool.convert({ inputPath: src, outputPath: color, outputFormat: "pdf", options: {} });
+    await tool.convert({
+      inputPath: src, outputPath: bw, outputFormat: "pdf",
+      options: { colorMode: "Black & White" },
+    });
+
+    assert.ok(isPdf(color), "color output is not a PDF");
+    assert.ok(isPdf(bw), "B&W output is not a PDF");
+    // A faithful render of a table with fills is far larger than mammoth's
+    // text-only ~1KB output; a tiny file means the render path silently no-op'd.
+    assert.ok(fs.statSync(color).size > 3000, "color PDF too small: " + fs.statSync(color).size);
+    // The greyscale filter changes the rendered pixels, so the two PDFs differ.
+    assert.notStrictEqual(
+      fs.readFileSync(color).length === fs.readFileSync(bw).length &&
+        Buffer.compare(fs.readFileSync(color), fs.readFileSync(bw)) === 0,
+      true,
+      "color and B&W output are byte-identical — grayscale had no effect"
+    );
+  });
+
   await check("pageSize and landscape reach printToPDF", async () => {
     const d = work();
     const src = path.join(d, "a.md");

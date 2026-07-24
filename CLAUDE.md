@@ -28,7 +28,7 @@ Two layers, because the PDF path needs Chromium:
   `pdfshrink`, `bmp`/`ico`, `engines`, the registry (incl. kinds/validation),
   and every non-PDF `document-convert` path. Runs in plain node.
 - Electron-hosted smoke tests (run directly): `npx electron test/electron-pdf.js`
-  (PDF output, pooled windows, `<base href>`, orientation),
+  (PDF output, pooled windows, `<base href>`, orientation, Word→PDF color+B&W),
   `npx electron test/electron-ops.js` (collect/explode via the discovered tools),
   and `npx electron test/electron-offline.js` (the render pool makes no remote
   requests). `npm run test:pdf` runs the first. **Anything touching PDF output or
@@ -82,7 +82,7 @@ src/
     ops.js               Runners for collect (N->1) and explode (1->N) kinds
     pagespec.js          Parse "1-3,5,8-" page ranges (shared by split/delete/extract)
     htmlutil.js          HTML normalization: strip <style>/<script>, <base href>, text extraction
-    pdfrender.js         HTML -> PDF via a POOL of offscreen Electron windows
+    pdfrender.js         HTML -> PDF, and Word (.docx) -> PDF, via POOLs of offscreen Electron windows
     pdfops.js            PDF merge/split/rotate/delete/extract/inspect via pdf-lib
     imgpdf.js            Images -> one PDF (sharp normalizes, pdf-lib assembles)
     pdfjs.js             Shared pdfjs-dist loader (dynamic import of the ESM build)
@@ -142,7 +142,9 @@ async convert({ inputPath, outputPath, outputFormat, options, signal, onProgress
   png/jpg/jpeg/webp/avif/tiff/gif/bmp/ico. Options: resize preset, custom max
   width, quality, ICO size set.
 - **Document** (pure JS + Electron PDF): md/markdown/html/htm/docx/txt ↔
-  html/md/txt/pdf/docx. Option: PDF page size.
+  html/md/txt/pdf/docx. Options: PDF page size, landscape, colour (Color / B&W).
+  **Word → PDF is a dedicated high-fidelity path** (docx-preview, offline, no
+  LibreOffice) — a true 1:1 render; the other targets still use mammoth.
 - **Office** (LibreOffice, three families): Word (docx/doc/odt/rtf), Spreadsheets
   (xlsx/xls/ods/csv), Presentations (pptx/ppt/odp) — each within-family + → pdf.
 - **PDF toolkit** (offline, auto-discovered tools):
@@ -261,6 +263,39 @@ To retheme, edit those token blocks only — all accent colour is confined to th
   `test/pagepicker.test.js`) rather than keeping a second copy that will drift.
 - **HEIC decode** goes through `heic-convert` because sharp's prebuilt libvips
   usually omits HEIF decode.
+- **Word → PDF must NOT go through mammoth.** mammoth (used for docx → md/txt/html)
+  is a *semantic* converter: it discards table borders, column widths, cell fills,
+  fonts, and rotated text — so a form-style .docx collapsed into an unrecognisable
+  blob. docx → pdf instead uses **docx-preview** (pure JS, reads the real OOXML)
+  rendered in an offscreen Electron window, then `printToPDF` — a genuine 1:1
+  conversion, still fully offline and needing no LibreOffice. `renderDocxPdf` in
+  `pdfrender.js` owns it; on any parse failure it falls back to the mammoth
+  intermediate so the conversion never hard-fails. **Fidelity was validated by
+  rendering the real user document; don't "simplify" it back onto the mammoth
+  path.**
+- **Word → PDF paginates from the .docx's own `w:pgSz`, not the page-size option.**
+  `parseDocxPageSize` reads the section width/height (twips ÷ 1440 = inches;
+  orientation is already baked into w:w/w:h) and emits an `@page` rule, printed
+  with `preferCSSPageSize:true`. Using the UI's Letter/A4 option instead would
+  clip or re-paginate the document. The pageSize/landscape options only apply to
+  the md/html/txt → pdf paths.
+- **Two render pools, not one.** `pdfrender.js` runs `htmlPool` (javascript:**false**,
+  for untrusted converted HTML) and `docxPool` (javascript:**true**, because
+  docx-preview must execute). Both use the same private offline session that
+  cancels every non-local request, so enabling JS changes nothing about the
+  offline promise (`test/electron-offline.js` still passes). **Do not render docx
+  by creating a window per file and destroying it** — on Electron 43 destroying a
+  window and immediately creating another in that session deadlocks the second
+  (reproduced: first docx converts, the next hangs forever). Reuse a pooled window
+  and park it on `about:blank` (awaited) before `release`, exactly like the HTML
+  pool.
+- **The B&W ("Black & White") PDF option is a CSS `filter:grayscale(100%)` on
+  `<html>`**, applied at print time with `printBackground:true`. Any CSS filter
+  makes Chromium **rasterise** the page, so a greyscale PDF is much larger than the
+  vector colour one and its text is no longer selectable — that's expected and
+  fine for B&W printing, not a bug. `docx-preview`/`jszip` are pure JS and stay in
+  the asar; `pdfrender.js` reads their browser builds with `fs` (works inside asar)
+  and inlines them into the render page, escaping any `</script` in the source.
 
 ## Roadmap (unbuilt)
 Smaller PDF follow-ons now that the engine is in place:
