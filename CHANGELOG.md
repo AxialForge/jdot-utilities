@@ -2,7 +2,7 @@
 
 All notable changes to Jdot Utilities. Dates are YYYY-MM-DD.
 
-## 1.2.0 — 2026-07-24
+## 1.1.1 — 2026-07-24
 
 - **Word → PDF is now a true 1:1 conversion.** Converting a `.docx` to PDF used
   to run it through a text-only converter that threw away tables, column widths,
