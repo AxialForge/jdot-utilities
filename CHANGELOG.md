@@ -2,6 +2,33 @@
 
 All notable changes to Jdot Utilities. Dates are YYYY-MM-DD.
 
+## 1.2.0 — 2026-07-24
+
+### Update yourself, on your terms
+- **Check for updates** — a new button in Settings. It asks GitHub whether a
+  newer version exists, then (only if you say so) downloads and installs it. This
+  is the *only* time the app ever touches the network: there's no launch check,
+  no background polling, and nothing downloads or installs without a separate,
+  explicit click. If you never press it, the app never connects.
+- **Turn it off entirely.** A single toggle hides the checker. For managed or
+  locked-down machines it can be forced off with the `JDOT_NO_UPDATES`
+  environment variable, which the in-app toggle can't override — and the block is
+  enforced in the app's core, not just the interface.
+
+### Code signing
+- Release builds are set up to be **code-signed** through the
+  [SignPath Foundation](https://signpath.org) open-source program (free code
+  signing by [SignPath.io](https://about.signpath.io)). Once active, Windows will
+  verify each build comes from this project and hasn't been altered, and the
+  SmartScreen warning on first run goes away. The signing pipeline is wired and
+  dormant until the project is enrolled.
+- Published a proper [download page](https://axialforge.github.io/jdot-utilities/)
+  with the project's **code signing policy** (roles, build process, and privacy).
+
+Privacy, stated plainly and now true to the letter: *this program will not
+transfer any information to other networked systems unless specifically requested
+by the user.*
+
 ## 1.1.1 — 2026-07-24
 
 - **Word → PDF is now a true 1:1 conversion.** Converting a `.docx` to PDF used

@@ -169,9 +169,23 @@ function updater() {
   });
   return u;
 }
-ipcMain.handle("update:check", () => updater().check());
-ipcMain.handle("update:download", () => updater().download());
-ipcMain.handle("update:install", () => updater().install());
+
+// The update checker can be switched off. `JDOT_NO_UPDATES` (env) is an
+// ENFORCED off that the UI cannot override — for locked-down or managed
+// machines — while the `showUpdater` setting is the user's own preference.
+// Enforcement lives here in the main process, not just in the renderer: the
+// check/download/install handlers refuse to act when disabled, so hiding the
+// UI is not the only thing standing between "off" and a network call.
+const updatePolicy = () =>
+  require("./updater").updatesAllowed({ env: process.env, showUpdater: settings.readSync().showUpdater });
+ipcMain.handle("update:policy", () => updatePolicy());
+
+const refuseIfDisabled = () =>
+  !updatePolicy().enabled ? { ok: false, error: "Update checking is turned off." } : null;
+
+ipcMain.handle("update:check", () => refuseIfDisabled() || updater().check());
+ipcMain.handle("update:download", () => refuseIfDisabled() || updater().download());
+ipcMain.handle("update:install", () => refuseIfDisabled() || updater().install());
 
 ipcMain.handle("tools:list", () => [...tools.values()].map(describe));
 

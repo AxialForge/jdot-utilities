@@ -8,8 +8,8 @@
     <style>
       :root {
         --bg: #15181d; --panel: #1c2027; --panel-2: #21262e; --line: #2b313b;
-        --text: #e6e9ef; --muted: #8a93a2; --accent: #3db2c4;
-        --accent-dim: rgba(61,178,196,.14); --ok: #5fd08a;
+        --text: #e6e9ef; --muted: #8a93a2; --accent: #3b74f0;
+        --accent-dim: rgba(59,116,240,.15); --ok: #5fd08a;
         --mono: ui-monospace, "Cascadia Code", Consolas, "SF Mono", monospace;
         --sans: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       }
@@ -18,14 +18,16 @@
       body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--sans); line-height: 1.6; }
       .mono { font-family: var(--mono); }
       a { color: var(--accent); text-decoration: none; }
+      a:hover { text-decoration: underline; }
       .wrap { max-width: 940px; margin: 0 auto; padding: 0 22px; }
 
       nav { display: flex; align-items: center; justify-content: space-between;
-            padding: 16px 0; border-bottom: 1px solid var(--line); }
+            padding: 16px 0; border-bottom: 1px solid var(--line); gap: 16px; }
       .brand { display: flex; align-items: center; gap: 9px; font-weight: 700; letter-spacing: .02em; }
       .mark { width: 15px; height: 15px; background: var(--accent);
         clip-path: polygon(0 60%,70% 60%,70% 40%,100% 40%,85% 75%,30% 75%,30% 100%,0 100%); }
-      nav a.gh { color: var(--muted); font-size: 14px; }
+      nav .links { display: flex; gap: 18px; align-items: center; }
+      nav a.navlink { color: var(--muted); font-size: 14px; }
 
       /* Hero */
       .hero { display: grid; grid-template-columns: 1.05fr .95fr; gap: 40px;
@@ -36,9 +38,10 @@
       .sub { color: var(--muted); font-size: 17px; margin: 0 0 28px; max-width: 42ch; }
       .cta { display: flex; gap: 12px; flex-wrap: wrap; }
       .btn { display: inline-block; padding: 11px 20px; border-radius: 7px; font-size: 15px; font-weight: 600; }
-      .btn.primary { background: var(--accent); color: #06222a; }
+      .btn.primary { background: var(--accent); color: #fff; }
+      .btn.primary:hover { text-decoration: none; }
       .btn.ghost { border: 1px solid var(--line); color: var(--text); }
-      .btn.ghost:hover { border-color: #3a424e; }
+      .btn.ghost:hover { border-color: #3a424e; text-decoration: none; }
 
       /* Signature: a work-order card mirroring the app */
       .order { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
@@ -56,20 +59,39 @@
       .chip.out { background: var(--accent-dim); color: var(--accent); }
       .arrow { color: var(--muted); }
 
+      section { border-top: 1px solid var(--line); padding: 52px 0; }
+      h2 { font-size: 26px; margin: 0 0 8px; }
+      p.lead { color: var(--muted); max-width: 62ch; margin: 0 0 22px; }
+
+      /* Download */
+      .dl-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 22px 0 18px; }
+      .dl-card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 20px; }
+      .dl-card h3 { margin: 0 0 4px; font-size: 17px; }
+      .dl-card .k { color: var(--muted); font-size: 13.5px; margin: 0 0 14px; }
+      .dl-note { color: var(--muted); font-size: 13.5px; }
+      .req { font-family: var(--mono); font-size: 12.5px; color: var(--muted); margin-top: 8px; }
+
       /* Feature row */
-      .why { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; padding: 30px 0 64px; }
+      .why { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
       .card { background: var(--panel); border: 1px solid var(--line); border-radius: 9px; padding: 20px; }
       .card h3 { margin: 0 0 7px; font-size: 16px; }
       .card p { margin: 0; color: var(--muted); font-size: 14px; }
 
-      /* Extend */
-      .extend { border-top: 1px solid var(--line); padding: 56px 0; }
-      .extend h2 { font-size: 26px; margin: 0 0 8px; }
-      .extend p.lead { color: var(--muted); max-width: 60ch; margin: 0 0 22px; }
+      .does ul { columns: 2; gap: 26px; color: var(--muted); font-size: 14.5px; margin: 8px 0 0; padding-left: 20px; }
+      .does li { margin: 4px 0; break-inside: avoid; }
+
       pre { background: #12151a; border: 1px solid var(--line); border-radius: 9px;
             padding: 18px; overflow-x: auto; font-family: var(--mono); font-size: 13px; color: #cfd6e0; }
       pre .c { color: var(--muted); }
       pre .k { color: var(--accent); }
+
+      /* Code signing policy */
+      .policy { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 22px 24px; }
+      .policy h3 { margin: 20px 0 6px; font-size: 15.5px; }
+      .policy h3:first-child { margin-top: 0; }
+      .policy p { margin: 0 0 6px; color: var(--muted); font-size: 14.5px; }
+      .policy .attrib { color: var(--text); }
+      .policy code { font-family: var(--mono); font-size: 12.5px; background: var(--panel-2); padding: 1px 5px; border-radius: 4px; }
 
       footer { border-top: 1px solid var(--line); padding: 26px 0; color: var(--muted); font-size: 13px;
                display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
@@ -77,7 +99,8 @@
       @media (max-width: 760px) {
         .hero { grid-template-columns: 1fr; padding: 48px 0 40px; }
         h1 { font-size: 36px; }
-        .why { grid-template-columns: 1fr; }
+        .why, .dl-grid { grid-template-columns: 1fr; }
+        .does ul { columns: 1; }
       }
       @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
     </style>
@@ -86,7 +109,11 @@
     <div class="wrap">
       <nav>
         <span class="brand"><span class="mark"></span> Jdot Utilities</span>
-        <a class="gh" href="https://github.com/AxialForge/jdot-utilities">GitHub ↗</a>
+        <span class="links">
+          <a class="navlink" href="#download">Download</a>
+          <a class="navlink" href="#code-signing">Code signing</a>
+          <a class="navlink" href="https://github.com/AxialForge/jdot-utilities">GitHub &#8599;</a>
+        </span>
       </nav>
 
       <header class="hero">
@@ -96,7 +123,7 @@
           <p class="sub">Jdot Utilities converts files entirely on your computer. No upload,
             no account, no server to run — and no network required at all.</p>
           <div class="cta">
-            <a class="btn primary" href="https://github.com/AxialForge/jdot-utilities/releases">Download for Windows</a>
+            <a class="btn primary" href="#download">Download for Windows</a>
             <a class="btn ghost" href="https://github.com/AxialForge/jdot-utilities">View source</a>
           </div>
         </div>
@@ -121,20 +148,100 @@
         </div>
       </header>
 
-      <section class="why">
-        <div class="card">
-          <h3>Runs offline</h3>
-          <p>No server, no localhost, no upload step. Install the app and convert —
-             airplane mode works fine.</p>
+      <!-- ── Download ─────────────────────────────────────────── -->
+      <section id="download">
+        <h2>Download</h2>
+        <p class="lead">Windows 10 and 11, 64-bit. Two builds — pick whichever suits you.
+          Both are the same app; neither uploads anything.</p>
+        <div class="dl-grid">
+          <div class="dl-card">
+            <h3>Installer</h3>
+            <p class="k">Adds a Start Menu entry and can update itself.</p>
+            <a class="btn primary" href="https://github.com/AxialForge/jdot-utilities/releases/latest">Get the installer</a>
+            <p class="req">jdot-utilities-&lt;version&gt;-setup.exe</p>
+          </div>
+          <div class="dl-card">
+            <h3>Portable</h3>
+            <p class="k">A single .exe. Nothing installed — run it from anywhere.</p>
+            <a class="btn ghost" href="https://github.com/AxialForge/jdot-utilities/releases/latest">Get the portable build</a>
+            <p class="req">jdot-utilities-&lt;version&gt;-portable.exe</p>
+          </div>
         </div>
-        <div class="card">
-          <h3>No account</h3>
-          <p>No sign-up, no JWT, no history database. Open it and go straight to work.</p>
+        <p class="dl-note">Every release, with notes, is on the
+          <a href="https://github.com/AxialForge/jdot-utilities/releases">releases page</a>.</p>
+      </section>
+
+      <!-- ── What it does (Documented) ────────────────────────── -->
+      <section class="does">
+        <h2>What it does</h2>
+        <p class="lead">One app for the file chores that usually send you to an
+          upload-your-file website — all of it local.</p>
+        <ul>
+          <li>Convert documents — Markdown, HTML, Word (.docx), text, PDF</li>
+          <li>Convert images — PNG, JPG, WebP, AVIF, TIFF, GIF, BMP, HEIC, and Windows ICO</li>
+          <li>Convert data — JSON, YAML, CSV, TSV, XML</li>
+          <li>Office to PDF — Word, spreadsheets, presentations (via LibreOffice)</li>
+          <li>Merge, split, rotate, delete and extract PDF pages</li>
+          <li>Images to PDF, and PDF to images</li>
+          <li>PDF to text, and OCR for scanned PDFs (offline)</li>
+          <li>Shrink and compress PDFs; convert to archival PDF/A</li>
+          <li>Watermark PDFs and edit their document info</li>
+        </ul>
+      </section>
+
+      <section class="why-wrap">
+        <div class="why">
+          <div class="card">
+            <h3>Runs offline</h3>
+            <p>No server, no localhost, no upload step. Install the app and convert —
+               airplane mode works fine. It only touches the network if you press
+               Check&nbsp;for&nbsp;updates.</p>
+          </div>
+          <div class="card">
+            <h3>No account</h3>
+            <p>No sign-up, no history database. Open it and go straight to work.</p>
+          </div>
+          <div class="card">
+            <h3>Built to extend</h3>
+            <p>Every tool is one self-describing file. Drop it in and the app renders
+               the interface for it automatically.</p>
+          </div>
         </div>
-        <div class="card">
-          <h3>Built to extend</h3>
-          <p>Every tool is one self-describing file. Drop it in and the app renders
-             the interface for it automatically.</p>
+      </section>
+
+      <!-- ── Code signing policy (required by SignPath Foundation) ── -->
+      <section id="code-signing">
+        <h2>Code signing policy</h2>
+        <p class="lead">Release builds of Jdot Utilities are digitally signed so Windows
+          can verify they come from this project and haven't been altered.</p>
+        <div class="policy">
+          <h3>Attribution</h3>
+          <p class="attrib">Free code signing provided by
+            <a href="https://about.signpath.io">SignPath.io</a>, certificate by
+            <a href="https://signpath.org">SignPath Foundation</a>.</p>
+
+          <h3>How builds are produced</h3>
+          <p>Every release is built from public source by GitHub Actions when a version
+            tag is pushed (see
+            <a href="https://github.com/AxialForge/jdot-utilities/blob/main/.github/workflows/build.yml"><code>.github/workflows/build.yml</code></a>).
+            The build sets the product name and version as signed metadata. Signing is
+            requested only for tagged releases, and each signing request is approved
+            manually before the signed build is published.</p>
+
+          <h3>Team roles</h3>
+          <p><strong>Author, committer and reviewer:</strong>
+            <a href="https://github.com/AxialForge">AxialForge</a> (Joseph Costarella) —
+            the sole maintainer, who writes and reviews all changes.</p>
+          <p><strong>Release &amp; signing approver:</strong>
+            <a href="https://github.com/AxialForge">AxialForge</a> — approves each
+            release tag and each signing request.</p>
+
+          <h3>Privacy policy</h3>
+          <p>This program will not transfer any information to other networked systems
+            unless specifically requested by the user. The only such action is the
+            optional, manual <em>Check for updates</em> in Settings, which contacts
+            GitHub to look for a newer release; nothing downloads or installs without a
+            further explicit action. There is no telemetry, no analytics and no account.</p>
         </div>
       </section>
 
@@ -158,7 +265,8 @@ module.exports = {
 
       <footer>
         <span>Jdot Utilities · MIT licensed · runs 100% locally</span>
-        <span class="mono">Inspired by the ConvertX layout, rebuilt offline</span>
+        <span>Free code signing by <a href="https://about.signpath.io">SignPath.io</a>,
+          certificate by <a href="https://signpath.org">SignPath Foundation</a></span>
       </footer>
     </div>
   </body>

@@ -19,6 +19,7 @@ contextBridge.exposeInMainWorld("api", {
   canInstallEngine: () => ipcRenderer.invoke("engines:canInstall"),
   gpuStatus: () => ipcRenderer.invoke("gpu:status"),
 
+  updatePolicy: () => ipcRenderer.invoke("update:policy"),
   checkForUpdates: () => ipcRenderer.invoke("update:check"),
   downloadUpdate: () => ipcRenderer.invoke("update:download"),
   installUpdate: () => ipcRenderer.invoke("update:install"),

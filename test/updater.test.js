@@ -6,7 +6,7 @@
 
 const test = require("node:test");
 const assert = require("node:assert");
-const { compareVersions, isNewer, parseVersion } = require("../src/main/updater");
+const { compareVersions, isNewer, parseVersion, updatesAllowed } = require("../src/main/updater");
 
 test("the module loads outside Electron without side effects", () => {
   // If configure()/autoUpdater ran at import, requiring this in plain node would
@@ -58,6 +58,29 @@ test("isNewer only reports a strictly greater version", () => {
   // The guard this exists for: a feed offering an older or equal build must be
   // rejected, so the app never 'updates' backwards.
   assert.strictEqual(isNewer("1.0.0", "1.1.1"), false, "must refuse a downgrade");
+});
+
+// ── on/off policy ──────────────────────────────────────────────
+
+test("update checker is on by default", () => {
+  assert.deepStrictEqual(updatesAllowed({ env: {}, showUpdater: undefined }), { enabled: true, enforced: false });
+  assert.deepStrictEqual(updatesAllowed({ env: {}, showUpdater: true }), { enabled: true, enforced: false });
+});
+
+test("the user setting can turn it off (not enforced)", () => {
+  assert.deepStrictEqual(updatesAllowed({ env: {}, showUpdater: false }), { enabled: false, enforced: false });
+});
+
+test("JDOT_NO_UPDATES enforces off and overrides the user setting", () => {
+  // Even with the user's setting explicitly on, the env policy wins and is enforced.
+  assert.deepStrictEqual(
+    updatesAllowed({ env: { JDOT_NO_UPDATES: "1" }, showUpdater: true }),
+    { enabled: false, enforced: true }
+  );
+  assert.deepStrictEqual(
+    updatesAllowed({ env: { JDOT_NO_UPDATES: "anything" }, showUpdater: undefined }),
+    { enabled: false, enforced: true }
+  );
 });
 
 test("realistic release progression is strictly increasing", () => {

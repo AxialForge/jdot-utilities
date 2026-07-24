@@ -247,6 +247,29 @@ The one and only time it touches the network is when **you** press
 exists. Nothing downloads or installs without a further, explicit click, and the
 app never checks on its own — so if you never press it, it never connects.
 
+## Code signing policy
+
+Release builds are digitally signed so Windows can verify they come from this
+project and haven't been tampered with.
+
+Free code signing provided by [SignPath.io](https://about.signpath.io),
+certificate by [SignPath Foundation](https://signpath.org).
+
+- **Builds** are produced from public source by GitHub Actions on a version tag
+  (see [`.github/workflows/build.yml`](.github/workflows/build.yml)), with the
+  product name and version set as signed metadata. Signing is requested only for
+  tagged releases, and each signing request is approved manually before the
+  signed build is published.
+- **Roles** — [AxialForge](https://github.com/AxialForge) (Joseph Costarella) is
+  the sole maintainer: author, committer and reviewer of all changes, and the
+  approver of each release and signing request.
+- **Privacy** — *This program will not transfer any information to other
+  networked systems unless specifically requested by the user.* The only such
+  action is the optional, manual **Check for updates** described above. No
+  telemetry, no analytics, no account.
+
+The same policy is published on the [download page](https://axialforge.github.io/jdot-utilities/#code-signing).
+
 ## License
 
 MIT — see [LICENSE](LICENSE).

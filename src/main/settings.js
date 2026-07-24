@@ -15,6 +15,7 @@ const DEFAULTS = {
   ghostscriptPath: null, // override path to gs; null = auto-detect (Compress / PDF-A)
   hideEngineNotice: false, // dismissed the "optional engine missing" banner
   askWhereToSave: true, // no default output folder -> ask on every run
+  showUpdater: true, // show the manual update checker in Settings (never auto-checks either way)
 };
 
 let filePath = null; // resolved once we know userData

@@ -63,6 +63,19 @@ function compareVersions(a, b) {
 /** Is `candidate` strictly newer than `current`? */
 const isNewer = (candidate, current) => compareVersions(candidate, current) > 0;
 
+// ── on/off policy ──────────────────────────────────────────────
+/**
+ * Decide whether the update checker is available.
+ * `JDOT_NO_UPDATES` in the environment is an ENFORCED off — for locked-down or
+ * managed machines — that the user's own `showUpdater` setting cannot override.
+ * Returns { enabled, enforced }. Kept pure and exported so main can enforce it
+ * (not just hide UI) and so it can be tested without Electron.
+ */
+function updatesAllowed({ env = {}, showUpdater } = {}) {
+  if (env.JDOT_NO_UPDATES) return { enabled: false, enforced: true };
+  return { enabled: showUpdater !== false, enforced: false };
+}
+
 // ── the updater ────────────────────────────────────────────────
 
 let wired = false;
@@ -152,4 +165,4 @@ function install() {
   return { ok: true };
 }
 
-module.exports = { configure, onStatus, check, download, install, compareVersions, isNewer, parseVersion };
+module.exports = { configure, onStatus, check, download, install, compareVersions, isNewer, parseVersion, updatesAllowed };

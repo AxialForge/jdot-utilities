@@ -64,21 +64,69 @@ jobs:
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
 
       - name: Upload build artifacts
+        id: upload
         if: startsWith(github.ref, 'refs/tags/')
         uses: actions/upload-artifact@v4
         with:
           name: jdot-utilities-windows
           path: dist/*.exe
 
+      # ── Code signing via SignPath Foundation (dormant until onboarded) ──────
+      # All signing steps are gated on the repository VARIABLE `SIGNPATH_ENABLED`
+      # being "true". Until it is set, they skip and the release attaches the
+      # unsigned build exactly as before — so enabling signing is a deliberate,
+      # reversible switch that can't silently break the working pipeline.
+      #
+      # To turn it on after SignPath approves the project, in repo settings add:
+      #   Variables: SIGNPATH_ENABLED=true, SIGNPATH_ORG_ID, SIGNPATH_PROJECT_SLUG,
+      #              SIGNPATH_POLICY_SLUG
+      #   Secrets:   SIGNPATH_API_TOKEN
+      # SignPath signs the installer *after* the build, which changes its bytes,
+      # so latest.yml (the updater's SHA-512 manifest) is regenerated from the
+      # signed file by scripts/regen-latest-yml.js — otherwise every update fails
+      # its integrity check. Each signing request is approved by a human in
+      # SignPath before the signed artifact comes back.
+      - name: Submit signing request (SignPath)
+        if: startsWith(github.ref, 'refs/tags/') && vars.SIGNPATH_ENABLED == 'true'
+        uses: signpath/github-action-submit-signing-request@v1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORG_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_POLICY_SLUG }}
+          github-artifact-id: ${{ steps.upload.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: dist-signed
+        # NOTE: the signed installer lands in dist-signed/. The step below swaps it
+        # back into dist/ and rebuilds latest.yml so the release ships the signed
+        # file with a matching hash.
+
+      - name: Re-hash latest.yml for the signed installer
+        if: startsWith(github.ref, 'refs/tags/') && vars.SIGNPATH_ENABLED == 'true'
+        run: |
+          Copy-Item dist-signed/*.exe dist/ -Force
+          node scripts/regen-latest-yml.js dist
+        shell: pwsh
+
       - name: Attach to release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           # latest.yml carries the version + SHA-512 the in-app updater reads;
-          # blockmap enables smaller differential downloads. Both must be in the
-          # release or "Check for updates" finds nothing.
+          # blockmap enables smaller differential downloads. They must be in the
+          # release or "Check for updates" finds nothing. (When signing is on, the
+          # blockmap is dropped and latest.yml is re-hashed for the signed .exe.)
           files: |
             dist/*.exe
             dist/latest.yml
             dist/*.blockmap
           generate_release_notes: true
+          append_body: true
+          # Attribution required by the SignPath Foundation open-source program,
+          # shown on every release page.
+          body: |
+            ---
+            Windows builds are code-signed. Free code signing provided by
+            [SignPath.io](https://about.signpath.io), certificate by
+            [SignPath Foundation](https://signpath.org). See the
+            [code signing policy](https://axialforge.github.io/jdot-utilities/#code-signing).

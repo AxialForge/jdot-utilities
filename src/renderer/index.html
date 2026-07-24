@@ -352,6 +352,13 @@
             <div class="set-head">Updates</div>
             <div class="set-row">
               <div class="info">
+                <div class="t">Update checking</div>
+                <div class="h" id="updToggleHint">When on, a button lets you check for a newer version. The app never checks on its own either way.</div>
+              </div>
+              <div class="seg" id="updSeg"><button data-upd-val="off">Off</button><button data-upd-val="on">On</button></div>
+            </div>
+            <div class="set-row" id="updCheckRow">
+              <div class="info">
                 <div class="t">Version <span class="mono" id="curVer"></span></div>
                 <div class="h" id="updStatus">Jdot Utilities never checks on its own. Press the button to look for a newer version — that is the only time the app uses the network.</div>
               </div>
@@ -566,7 +573,7 @@
           inputFormats:["pptx","ppt","odp"], outputFormats:["pdf","pptx","odp"], options:[] },
       ];
 
-      let SETTINGS = { theme:"grey", defaultOutputDir:null, pdfPageSize:"Letter", concurrency:4, hardwareAcceleration:"auto", recurseFolders:false, libreOfficePath:null, ghostscriptPath:null, hideEngineNotice:false, askWhereToSave:true };
+      let SETTINGS = { theme:"grey", defaultOutputDir:null, pdfPageSize:"Letter", concurrency:4, hardwareAcceleration:"auto", recurseFolders:false, libreOfficePath:null, ghostscriptPath:null, hideEngineNotice:false, askWhereToSave:true, showUpdater:true };
       const applyTheme = (t) => document.documentElement.setAttribute("data-theme", t);
       async function saveSettings(patch){ SETTINGS = { ...SETTINGS, ...patch }; if (hasApi) SETTINGS = await api.setSettings(patch); }
 
@@ -1460,16 +1467,47 @@
       // ── Updates (manual only) ──────────────────────────────────
       // The Check button is the app's one and only network call. Nothing here
       // runs on its own — no launch check, no polling. Mirrors updater.js.
+      // Whether the checker is shown, and whether that's locked by policy.
+      let UPD_POLICY = { enabled:true, enforced:false };
+
+      // Reflect the on/off state: the Off/On segment, and whether the actual
+      // Check row is visible at all. When enforced by JDOT_NO_UPDATES the toggle
+      // is read-only and says so.
+      function paintUpdater(){
+        const on = UPD_POLICY.enabled;
+        document.querySelectorAll("#updSeg button").forEach((b)=>{
+          b.classList.toggle("on", (b.dataset.updVal==="on")===on);
+          b.disabled = UPD_POLICY.enforced;
+        });
+        const row=$("updCheckRow"); if(row) row.hidden = !on;
+        const hint=$("updToggleHint");
+        if(hint) hint.textContent = UPD_POLICY.enforced
+          ? "Turned off by system policy (JDOT_NO_UPDATES) — this can't be changed here."
+          : "When on, a button lets you check for a newer version. The app never checks on its own either way.";
+      }
+
       function wireUpdates(){
         const set = (msg)=>{ const el=$("updStatus"); if(el) el.textContent=msg; };
         const show = (id,on)=>{ const el=$(id); if(el) el.hidden=!on; };
         if($("curVer")) $("curVer").textContent = SETTINGS.__version ? "v"+SETTINGS.__version : "";
 
         if(!hasApi){
+          UPD_POLICY = { enabled:false, enforced:false };
+          paintUpdater();
           set("Updating happens in the installed app.");
           const c=$("updCheck"); if(c) c.disabled=true;
+          $("updToggleHint").textContent = "Updating happens in the installed app.";
           return;
         }
+
+        // The on/off toggle. "Off" means the app can make no network call at all,
+        // enforced in the main process — not just a hidden button.
+        document.querySelectorAll("#updSeg button").forEach((b)=> b.onclick=async()=>{
+          if(UPD_POLICY.enforced) return;
+          await api.setSettings({ showUpdater: b.dataset.updVal==="on" });
+          UPD_POLICY = await api.updatePolicy();
+          paintUpdater();
+        });
 
         api.onUpdateStatus((s)=>{
           switch(s.state){
@@ -1502,6 +1540,9 @@
         };
         $("updDownload").onclick=()=>{ $("updDownload").disabled=true; api.downloadUpdate(); };
         $("updInstall").onclick=()=> api.installUpdate();
+
+        // Reflect the current policy (setting + any enforced override).
+        api.updatePolicy().then((p)=>{ UPD_POLICY = p || UPD_POLICY; paintUpdater(); }).catch(()=>{});
       }
 
       function setStatus(t){ $("status").textContent=t; }
