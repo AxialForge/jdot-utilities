@@ -2,6 +2,15 @@
 
 All notable changes to Jdot Utilities. Dates are YYYY-MM-DD.
 
+## 1.2.1 — 2026-07-24
+
+### Fixed
+- **"Checking for updates…" no longer sticks in the status bar.** Pressing
+  Settings → Check for updates wrote that message to the footer status bar, but
+  the result came back through the Updates panel's own line — so the footer sat
+  stuck on "Checking for updates…" forever. The check now reports entirely in its
+  own panel line and leaves the footer alone.
+
 ## 1.2.0 — 2026-07-24
 
 ### Update yourself, on your terms

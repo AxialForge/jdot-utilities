@@ -1535,7 +1535,12 @@
         });
 
         $("updCheck").onclick=async()=>{
-          $("updCheck").disabled=true; setStatus("Checking for updates…");
+          // Feedback goes to the panel's own status line (set()), NOT the global
+          // footer status bar: the updater result comes back through onUpdateStatus
+          // -> #updStatus, so writing "Checking…" to the footer (#status) left it
+          // stuck there forever with nothing to clear it.
+          set("Checking for updates…");
+          $("updCheck").disabled=true;
           try { await api.checkForUpdates(); } finally { $("updCheck").disabled=false; }
         };
         $("updDownload").onclick=()=>{ $("updDownload").disabled=true; api.downloadUpdate(); };

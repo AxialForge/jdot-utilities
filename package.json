@@ -1,6 +1,6 @@
 {
   "name": "jdot-utilities",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Local, offline file utilities — conversion, PDF tools, and more. No cloud, no account, no upload.",
   "main": "src/main/main.js",
   "author": "Joe",
@@ -13,6 +13,7 @@
     "dev": "electron .",
     "test": "node --test \"test/**/*.test.js\"",
     "test:pdf": "electron test/electron-pdf.js",
+    "gen:testpdf": "node scripts/testgen",
     "build:win": "electron-builder --win",
     "build:portable": "electron-builder --win portable"
   },

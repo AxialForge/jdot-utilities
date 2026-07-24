@@ -270,6 +270,14 @@ To retheme, edit those token blocks only — all accent colour is confined to th
   would hang the UI on "Checking…", so `check()` guards on `isUpdaterActive()`
   and reports a friendly message instead. `autoDownload`/`autoInstallOnAppQuit`
   are both **false** — nothing fetches or installs without a click.
+- **The updater reports in its own panel line (`#updStatus`), never the footer
+  status bar (`#status`).** The footer is the app's global status ("Ready",
+  "Converting…", "Done") and every writer there leaves a legitimate *final*
+  message. The update check's real result comes back asynchronously through
+  `onUpdateStatus` → `#updStatus`, so writing "Checking for updates…" to the
+  footer left it **stuck there forever** with nothing to clear it (shipped in
+  v1.2.0, fixed in v1.2.1). Give updater feedback via `wireUpdates`' local
+  `set()` helper; don't call `setStatus()` from the update flow.
 - **Artifact names must be space-free** (`electron-builder.yml` sets
   `artifactName: ${name}-${version}-...`). With a space, the on-disk file,
   the URL in `latest.yml` (hyphenated), and the uploaded GitHub asset (spaces →
