@@ -19,6 +19,10 @@ const OUTPUTS = ["png", "jpg", "jpeg", "webp", "avif", "tiff", "gif", "bmp", "ic
 
 const normOut = (f) => (f === "jpg" ? "jpeg" : f);
 
+// ~1.2 gigapixels: comfortably above any real photo, scan, or panorama, while
+// still refusing a file that claims impossible dimensions.
+const MAX_INPUT_PIXELS = 1_200_000_000;
+
 // Icon size sets. Windows picks the closest frame, so shipping several is normal.
 const ICO_SETS = {
   "Standard (16, 32, 48, 256)": [16, 32, 48, 256],
@@ -57,7 +61,12 @@ async function openImage(inputPath) {
       ? sharp(frame.png)
       : sharp(frame.data, { raw: { width: frame.width, height: frame.height, channels: frame.channels } });
   }
-  return sharp(inputPath, { animated: true, limitInputPixels: false });
+  // A finite cap rather than `false`. sharp's default guard exists to stop a
+  // decompression bomb — a small file that declares enormous dimensions — from
+  // allocating until the process dies. The default (~268 MP) is too low for
+  // legitimate scans and panoramas, so it is raised rather than removed;
+  // pdfraster.js clamps its render scale for the same reason.
+  return sharp(inputPath, { animated: true, limitInputPixels: MAX_INPUT_PIXELS });
 }
 
 module.exports = {

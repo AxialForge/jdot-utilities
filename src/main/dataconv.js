@@ -31,7 +31,17 @@ function parseDelimited(text, delim) {
   });
 }
 function parseXml(text) {
-  const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: "@", parseTagValue: true, trimValues: true });
+  const parser = new XMLParser({
+    ignoreAttributes: false,
+    attributeNamePrefix: "@",
+    parseTagValue: true,
+    trimValues: true,
+    // The XML being parsed came from someone else's file. Turning off entity
+    // processing removes the DOCTYPE-entity expansion class of problem
+    // (billion-laughs style expansion, entities that reference local files)
+    // for a feature that has no use for custom entities anyway.
+    processEntities: false,
+  });
   return parser.parse(text);
 }
 

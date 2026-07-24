@@ -6,7 +6,7 @@
   "author": "Joe",
   "license": "MIT",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "scripts": {
     "start": "electron .",
@@ -31,10 +31,8 @@
     "turndown": "^7.2.0"
   },
   "devDependencies": {
-    "electron": "^32.2.0",
+    "electron": "^43.2.0",
     "electron-builder": "^25.1.8"
   },
-  "allowScripts": {
-    "electron@32.3.3": true
-  }
+  "allowScripts": {}
 }

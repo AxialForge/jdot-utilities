@@ -66,6 +66,47 @@ test("two conversions can run at once without clobbering each other", { skip }, 
   fs.rmSync(d, { recursive: true, force: true });
 });
 
+test("temp directories are cleaned up on success", { skip }, async () => {
+  const before = countTempDirs();
+  // NB: the fixture dir must not share the "jdot-lo-" prefix the counter looks
+  // for, or the test counts itself.
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), "fixture-clean-"));
+  const csv = path.join(d, "x.csv");
+  fs.writeFileSync(csv, "A,B\n1,2\n");
+
+  await convertOffice({ inputPath: csv, outputPath: path.join(d, "x.pdf"), targetExt: "pdf", sofficePath: soffice });
+
+  assert.deepStrictEqual(countTempDirs(), before, "conversion left temp directories behind");
+  fs.rmSync(d, { recursive: true, force: true });
+});
+
+test("temp directories are cleaned up even when the conversion fails", { skip }, async () => {
+  // Regression: the LibreOffice profile dir was never removed, and the output
+  // dir only on success — so a failed conversion leaked two directories.
+  const before = countTempDirs();
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), "fixture-fail-"));
+  const src = path.join(d, "not-really.csv");
+  fs.writeFileSync(src, "A,B\n1,2\n");
+
+  await assert.rejects(
+    () => convertOffice({ inputPath: src, outputPath: path.join(d, "o.zzz"), targetExt: "zzz", sofficePath: soffice }),
+    "an unsupported target should fail"
+  );
+
+  assert.deepStrictEqual(countTempDirs(), before, "failed conversion left temp directories behind");
+  fs.rmSync(d, { recursive: true, force: true });
+});
+
+// How many of our own temp dirs currently exist.
+function countTempDirs() {
+  const tmp = os.tmpdir();
+  let n = 0;
+  for (const name of fs.readdirSync(tmp)) {
+    if (name.startsWith("jdot-lo-") || name.startsWith("jdot-loprof-")) n += 1;
+  }
+  return n;
+}
+
 test("a missing LibreOffice produces a clear, actionable error", async () => {
   await assert.rejects(
     () => convertOffice({ inputPath: "a.docx", outputPath: "a.pdf", targetExt: "pdf", sofficePath: null }),
