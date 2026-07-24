@@ -18,8 +18,10 @@ output, unless a note or an excluded-pair says otherwise.
 
 ## 1. Documents (shipping; planned expansion below)
 
-**Engine now:** `marked` + `turndown` + `mammoth` + `html-to-docx` + Electron's
-Chromium for PDF — pure JS, offline, no binary.
+**Engine now:** `marked` + `turndown` + `mammoth` + `html-to-docx` +
+`docx-preview` + Electron's Chromium for PDF — pure JS, offline, no binary.
+**Word → PDF** uses `docx-preview` for a full 1:1 render (tables, cell fills,
+column widths, rotated headers); the other targets use `mammoth`.
 
 | From \ To | html | md | txt | pdf | docx |
 |-----------|:----:|:--:|:---:|:---:|:----:|
@@ -29,7 +31,9 @@ Chromium for PDF — pure JS, offline, no binary.
 | **txt**   |  Shipping  | Shipping | —   | Shipping  | Shipping   |
 
 Inputs: md, markdown, html, htm, docx, txt. Options: PDF page size (Letter/A4/Legal/
-Tabloid), landscape. Same-format pairs (docx→docx, etc.) are intentionally hidden.
+Tabloid), landscape, colour (Color / Black & White). Word → PDF ignores the page-size
+option and uses the document's own page geometry so pagination matches Word.
+Same-format pairs (docx→docx, etc.) are intentionally hidden.
 
 **Planned expansion — `pandoc` sidecar (~130 MB bundled).** One binary takes this from 6
 formats to ~45 and writes *real* `.docx` (retiring `html-to-docx` + `mammoth`):

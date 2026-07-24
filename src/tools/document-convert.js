@@ -69,6 +69,17 @@ module.exports = {
       type: "boolean",
       default: false,
     },
+    {
+      key: "colorMode",
+      label: "PDF colour",
+      type: "select",
+      choices: ["Color", "Black & White"],
+      default: "Color",
+      choiceHelp: {
+        Color: "Keep the document's original colours.",
+        "Black & White": "Convert every colour to greyscale (for B&W printing).",
+      },
+    },
   ],
 
   async convert({ inputPath, outputPath, outputFormat, options, onProgress }) {
@@ -78,7 +89,27 @@ module.exports = {
     if (!OUTPUTS.includes(to)) throw new Error(`Unsupported output: .${to}`);
 
     const baseDir = path.dirname(path.resolve(inputPath));
+    const grayscale = options?.colorMode === "Black & White";
     onProgress?.(0.15);
+
+    // Word -> PDF gets a dedicated high-fidelity path. mammoth (used for the
+    // HTML/text targets below) discards all layout — table borders, column
+    // widths, cell fills, rotated headers — which for a form-style document
+    // looks nothing like the original. renderDocxPdf renders the real OOXML, so
+    // it is a true 1:1 conversion. If it can't parse a given file we fall through
+    // to the mammoth intermediate so the conversion still succeeds.
+    if (from === "docx" && to === "pdf") {
+      try {
+        const { renderDocxPdf } = require("../main/pdfrender");
+        await renderDocxPdf(inputPath, outputPath, { grayscale });
+        onProgress?.(1);
+        return;
+      } catch {
+        // docx-preview couldn't handle this file — fall through to the mammoth
+        // intermediate below so the conversion still produces a PDF.
+        onProgress?.(0.5);
+      }
+    }
 
     // ── 1) Normalize the input to an HTML body fragment ──────────────
     let body;
@@ -134,6 +165,7 @@ module.exports = {
       await renderPdf(htmlutil.wrapDocument(body, { baseDir, title }), outputPath, {
         pageSize: options?.pageSize,
         landscape: Boolean(options?.landscape),
+        grayscale,
       });
     }
     onProgress?.(1);

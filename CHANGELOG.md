@@ -2,6 +2,23 @@
 
 All notable changes to Jdot Utilities. Dates are YYYY-MM-DD.
 
+## 1.2.0 — 2026-07-24
+
+- **Word → PDF is now a true 1:1 conversion.** Converting a `.docx` to PDF used
+  to run it through a text-only converter that threw away tables, column widths,
+  cell colours, fonts, and rotated headers — so a form-style document (a shift
+  log, an inspection sheet) came out looking nothing like the original. It now
+  renders the real Word layout, so the PDF matches the document you see in Word:
+  borders, shaded cells, merged cells, sideways labels, coloured text, and the
+  same page breaks. Still fully offline, and it needs no LibreOffice install.
+- **New "PDF colour" option: Color or Black & White.** Leave it on Color to keep
+  the document's original colours, or choose Black & White to convert everything
+  to greyscale for black-and-white printing. (A B&W PDF is a larger file because
+  the page is flattened to greyscale — that's expected.) The option also applies
+  to Markdown/HTML/text → PDF.
+- If a particular `.docx` can't be rendered the new way, the converter quietly
+  falls back to the old path so the conversion still succeeds.
+
 ## 1.1.0 — 2026-07-24
 
 - **Drag to reorder** in Merge PDFs and Images → PDF. Grab a file by the grip and
