@@ -74,5 +74,11 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/*.exe
+          # latest.yml carries the version + SHA-512 the in-app updater reads;
+          # blockmap enables smaller differential downloads. Both must be in the
+          # release or "Check for updates" finds nothing.
+          files: |
+            dist/*.exe
+            dist/latest.yml
+            dist/*.blockmap
           generate_release_notes: true

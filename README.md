@@ -228,7 +228,6 @@ adds a large binary or a new engine:
 
 - **Bundle LibreOffice** so Office conversions need no install (~400 MB).
 - **Audio/video** via a bundled `ffmpeg` (~80 MB).
-- **Auto-update** via GitHub Releases.
 - **More document formats** via a `pandoc` sidecar (LaTeX, EPUB, AsciiDoc…).
 
 The complete plan, with the engine and bundle cost for each, is in
@@ -238,9 +237,15 @@ The complete plan, with the engine and bundle cost for each, is in
 
 ## Privacy
 
-Jdot Utilities makes **no network requests** at runtime. Your files are read and
-written locally and nothing is ever transmitted. It works with the network cable
+Jdot Utilities makes **no network requests on its own** — no telemetry, no
+accounts, no automatic checks of any kind. Your files are read and written
+locally and nothing is ever transmitted. It works with the network cable
 unplugged, by design.
+
+The one and only time it touches the network is when **you** press
+**Settings → Check for updates**, which asks GitHub whether a newer version
+exists. Nothing downloads or installs without a further, explicit click, and the
+app never checks on its own — so if you never press it, it never connects.
 
 ## License
 

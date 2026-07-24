@@ -38,17 +38,36 @@ extraResources:
 # To bundle Ghostscript into the .exe (so Compress / PDF-A works with no separate
 # install), drop gswin64c.exe + its DLLs in resources/bin/ and add the entry above.
 
+# Where the updater looks for new versions. electron-builder also uses this to
+# generate `latest.yml` (the version + SHA-512 manifest the updater reads) into
+# dist/ at build time; CI uploads it alongside the .exe. This does NOT make the
+# app phone home — the update check only runs when the user clicks it.
+publish:
+  provider: github
+  owner: AxialForge
+  repo: jdot-utilities
+
 win:
   target:
+    # NSIS is the updatable target (the portable .exe can't self-update — it has
+    # nothing installed to replace). The updater is a no-op in the portable build.
     - nsis
     - portable
   # Place a 256x256+ icon at build/icon.ico. If absent, electron-builder uses a default.
   icon: build/icon.ico
 
+# Space-free artifact names. With a space, the on-disk file, the URL written into
+# latest.yml (which uses hyphens), and the GitHub asset name (spaces become dots
+# on upload) all disagree — so the updater's download URL would 404. Using ${name}
+# (jdot-utilities) keeps all three identical.
 nsis:
+  artifactName: ${name}-${version}-setup.${ext}
   oneClick: false
   perMachine: false
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
   shortcutName: Jdot Utilities
+
+portable:
+  artifactName: ${name}-${version}-portable.${ext}

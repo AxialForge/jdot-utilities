@@ -347,6 +347,22 @@
         <div class="pane">
           <h1>Settings</h1>
           <p class="desc">Preferences are saved and applied across the app.</p>
+
+          <div class="set-group">
+            <div class="set-head">Updates</div>
+            <div class="set-row">
+              <div class="info">
+                <div class="t">Version <span class="mono" id="curVer"></span></div>
+                <div class="h" id="updStatus">Jdot Utilities never checks on its own. Press the button to look for a newer version — that is the only time the app uses the network.</div>
+              </div>
+              <div style="display:flex; gap:8px; align-items:flex-start;">
+                <button class="btn small" id="updCheck">Check for updates</button>
+                <button class="btn small primary" id="updDownload" hidden>Download</button>
+                <button class="btn small primary" id="updInstall" hidden>Restart &amp; install</button>
+              </div>
+            </div>
+          </div>
+
           <div class="set-group">
             <div class="set-head">Appearance</div>
             <div class="set-row">
@@ -1441,13 +1457,60 @@
         if(hasApi && id) api.openEngineDownload(id);
       };
 
+      // ── Updates (manual only) ──────────────────────────────────
+      // The Check button is the app's one and only network call. Nothing here
+      // runs on its own — no launch check, no polling. Mirrors updater.js.
+      function wireUpdates(){
+        const set = (msg)=>{ const el=$("updStatus"); if(el) el.textContent=msg; };
+        const show = (id,on)=>{ const el=$(id); if(el) el.hidden=!on; };
+        if($("curVer")) $("curVer").textContent = SETTINGS.__version ? "v"+SETTINGS.__version : "";
+
+        if(!hasApi){
+          set("Updating happens in the installed app.");
+          const c=$("updCheck"); if(c) c.disabled=true;
+          return;
+        }
+
+        api.onUpdateStatus((s)=>{
+          switch(s.state){
+            case "checking": set("Checking GitHub for a newer version…"); break;
+            case "available":
+              set(`Version ${s.version} is available. Download it when you're ready.`);
+              show("updDownload",true); show("updInstall",false);
+              break;
+            case "current":
+              set("You're on the latest version.");
+              show("updDownload",false); show("updInstall",false);
+              break;
+            case "downloading":
+              set(`Downloading… ${s.percent}%`);
+              show("updDownload",false);
+              break;
+            case "downloaded":
+              set(`Version ${s.version} is ready. Restart to finish installing.`);
+              show("updDownload",false); show("updInstall",true);
+              break;
+            case "error":
+              set(s.message||"Update check failed.");
+              break;
+          }
+        });
+
+        $("updCheck").onclick=async()=>{
+          $("updCheck").disabled=true; setStatus("Checking for updates…");
+          try { await api.checkForUpdates(); } finally { $("updCheck").disabled=false; }
+        };
+        $("updDownload").onclick=()=>{ $("updDownload").disabled=true; api.downloadUpdate(); };
+        $("updInstall").onclick=()=> api.installUpdate();
+      }
+
       function setStatus(t){ $("status").textContent=t; }
 
       (async ()=>{
-        if(hasApi){ const info=await api.info(); $("appName").textContent=info.name; document.title=info.name+" "+info.version; $("ver").textContent="v"+info.version; SETTINGS=await api.getSettings(); C.tools=await api.listTools(); }
+        if(hasApi){ const info=await api.info(); $("appName").textContent=info.name; document.title=info.name+" "+info.version; $("ver").textContent="v"+info.version; SETTINGS=await api.getSettings(); SETTINGS.__version=info.version; C.tools=await api.listTools(); }
         else { $("previewBadge").hidden=false; $("ver").textContent="preview"; C.tools=FALLBACK_TOOLS; }
         applyTheme(SETTINGS.theme); paintSettings(); setSaveLine();
-        fillSortOptions(); updateSummary();
+        fillSortOptions(); updateSummary(); wireUpdates();
         // Engines first so CAN_INSTALL is known before the panels paint.
         await refreshEngines(); refreshOffice(); refreshGs(); refreshGpu();
         // Open on the Convert section (its first tool selected by showTab).

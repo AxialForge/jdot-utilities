@@ -158,6 +158,21 @@ ipcMain.handle("app:info", () => ({
   version: config.VERSION,
 }));
 
+// ── Updates ───────────────────────────────────────────────────
+// Manual only. The updater module makes the app's ONLY network call, and never
+// without a click — see the note at the top of updater.js. Events flow back to
+// the window so the Settings panel can show progress.
+function updater() {
+  const u = require("./updater");
+  u.onStatus((payload) => {
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send("update:status", payload);
+  });
+  return u;
+}
+ipcMain.handle("update:check", () => updater().check());
+ipcMain.handle("update:download", () => updater().download());
+ipcMain.handle("update:install", () => updater().install());
+
 ipcMain.handle("tools:list", () => [...tools.values()].map(describe));
 
 // ── File / folder pickers ─────────────────────────────────────
