@@ -13,7 +13,6 @@
     "dev": "electron .",
     "test": "node --test \"test/**/*.test.js\"",
     "test:pdf": "electron test/electron-pdf.js",
-    "gen:testpdf": "node scripts/testgen",
     "build:win": "electron-builder --win",
     "build:portable": "electron-builder --win portable"
   },
