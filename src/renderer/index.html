@@ -56,6 +56,8 @@
       .notice .acts { display:flex; gap:6px; flex-shrink:0; }
       .notice.inline { border:1px solid var(--line); border-left:3px solid var(--warn);
         border-radius:8px; margin:0 0 12px; padding:10px 12px; background:var(--panel); }
+      .notice.col { flex-direction:column; align-items:stretch; gap:8px; }
+      .notice.col .notice-row { display:flex; align-items:center; gap:12px; }
 
       main { flex:1; min-height:0; display:flex; }
       [data-view] { flex:1; min-height:0; display:flex; }
@@ -65,9 +67,13 @@
       .rail-head, .ctl-head, .set-head { font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); font-weight:600; }
       .rail-head { padding:14px 16px 6px; }
       .cat-label { font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); padding:12px 16px 3px; }
-      .tool-btn { display:block; width:100%; text-align:left; padding:9px 16px; border:0; border-left:2px solid transparent; background:transparent; color:var(--text); cursor:pointer; font-family:inherit; font-size:13.5px; }
+      .tool-btn { display:flex; align-items:center; gap:8px; width:100%; text-align:left; padding:9px 16px; border:0; border-left:2px solid transparent; background:transparent; color:var(--text); cursor:pointer; font-family:inherit; font-size:13.5px; }
+      .tool-btn .tool-name { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
       .tool-btn:hover { background:var(--panel-2); }
       .tool-btn.active { background:var(--accent-dim); border-left-color:var(--accent); }
+      /* A tool whose external engine is missing: dimmed, with a warning badge. */
+      .tool-btn.needs-engine .tool-name { opacity:.55; }
+      .tool-badge { flex:0 0 auto; width:15px; height:15px; border-radius:50%; background:var(--warn,#c8781f); color:#fff; font-size:10px; font-weight:700; line-height:15px; text-align:center; }
 
       .stage { flex:1; min-width:0; padding:16px 18px; overflow-y:auto; display:flex; flex-direction:column; }
       .stage h1 { margin:0 0 2px; font-size:17px; }
@@ -98,6 +104,9 @@
       .card-name { font-weight:650; font-size:14px; display:flex; align-items:center; gap:8px; }
       .card-kind { font-size:10px; letter-spacing:.05em; text-transform:uppercase; color:var(--on-accent);
         background:var(--accent); border-radius:5px; padding:1px 6px; font-weight:600; }
+      .card-need { font-size:10px; letter-spacing:.03em; text-transform:uppercase; color:#fff;
+        background:var(--warn,#c8781f); border-radius:5px; padding:1px 6px; font-weight:600; margin-left:auto; }
+      .card.needs-engine { opacity:.82; }
       .card-desc { font-size:12px; color:var(--muted); line-height:1.4; flex:1; }
       .card-flow { font-size:11px; }
       .card-flow .fmt { display:inline-block; background:var(--panel-2); border-radius:4px; padding:1px 5px; margin:1px; font-family:ui-monospace,Consolas,monospace; }
@@ -166,6 +175,10 @@
       .merge-toggle input { width:auto; }
       .merge-name { display:flex; align-items:center; gap:6px; color:var(--muted); font-size:12px; }
       .merge-name input { flex:1; }
+      /* Greyed-but-visible: the option stays legible so it's discoverable, the
+         reason line below says why it isn't available yet. */
+      #mergeBox.is-disabled .merge-toggle { opacity:.5; cursor:default; }
+      #mergeBox.is-disabled .merge-toggle input { cursor:not-allowed; }
 
       /* ── Visual page picker ─────────────────────────────────── */
       .pages { border:1px solid var(--line); border-radius:9px; background:var(--panel);
@@ -228,7 +241,9 @@
 
       .set-group { margin-bottom:22px; }
       .set-head { margin-bottom:10px; }
-      .set-row { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:12px 0; border-bottom:1px solid var(--line); }
+      .set-row { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:12px 0; border-bottom:1px solid var(--line); border-radius:6px; transition:background .3s ease; }
+      /* Brief highlight when the user is sent here to set up a specific engine. */
+      .set-row.flash { background:var(--accent-dim); }
       .set-row .info { max-width:58%; }
       .set-row .info .t { font-size:14px; } .set-row .info .h { font-size:12px; color:var(--muted); margin-top:2px; }
       .seg { display:flex; border:1px solid var(--line); border-radius:7px; overflow:hidden; }
@@ -292,12 +307,16 @@
             <h1 id="toolName">Pick a tool</h1>
             <p class="desc" id="toolDesc">Choose a tool, then add files.</p>
             <!-- Warns before any files are added when this tool's engine is absent. -->
-            <div class="notice inline" id="engineWarn" hidden>
-              <span class="grow" id="engineWarnText"></span>
-              <span class="acts">
-                <button class="btn small" id="engineWarnInstall" hidden>Install now</button>
-                <button class="btn small" id="engineWarnGet">Download page</button>
-              </span>
+            <div class="notice inline col" id="engineWarn" hidden>
+              <div class="notice-row">
+                <span class="grow" id="engineWarnText"></span>
+                <span class="acts">
+                  <button class="btn small" id="engineWarnInstall" hidden>Install now</button>
+                  <button class="btn small" id="engineWarnGet">Download page</button>
+                  <button class="btn small" id="engineWarnSettings">Settings</button>
+                </span>
+              </div>
+              <div class="opt-help" id="engineWarnHint" hidden></div>
             </div>
             <div class="drop" id="drop">
               <div>Drop files here</div>
@@ -345,6 +364,7 @@
             <label class="field"><span class="field-label">Combine</span>
               <span class="merge-toggle"><input type="checkbox" id="mergeOutput"> Merge all into one PDF</span>
             </label>
+            <div class="opt-help" id="mergeReason" hidden></div>
             <label class="field" id="mergeNameField" hidden><span class="field-label">Merged name</span>
               <span class="merge-name"><input id="mergeName" value="merged" spellcheck="false">.pdf</span>
             </label>
@@ -432,9 +452,9 @@
             </div>
           </div>
 
-          <div class="set-group">
+          <div class="set-group" id="engineSettings">
             <div class="set-head">External engines</div>
-            <div class="set-row">
+            <div class="set-row" id="engRow-libreoffice">
               <div class="info"><div class="t"><span class="dot" id="loDot"></span>LibreOffice</div><div class="h" id="loStatus">Checking…</div><div class="h muted">Needed for Office (Word / Sheets / Slides) conversions.</div></div>
               <div style="display:flex; gap:8px;">
                 <button class="btn small" id="loInstall" hidden>Install</button>
@@ -443,8 +463,8 @@
                 <button class="btn small" id="resetLo">Auto</button>
               </div>
             </div>
-            <div class="set-row">
-              <div class="info"><div class="t"><span class="dot" id="gsDot"></span>Ghostscript</div><div class="h" id="gsStatus">Checking…</div><div class="h muted">Needed for Compress / PDF-A. Shrink PDF works without it.</div></div>
+            <div class="set-row" id="engRow-ghostscript">
+              <div class="info"><div class="t"><span class="dot" id="gsDot"></span>Ghostscript</div><div class="h" id="gsStatus">Checking…</div><div class="h muted">Needed for Compress / PDF-A. Shrink PDF works without it.</div><div class="opt-help" id="gsHint" hidden></div></div>
               <div style="display:flex; gap:8px;">
                 <button class="btn small" id="gsInstall" hidden>Install</button>
                 <button class="btn small" id="gsGet">Download page</button>
@@ -697,7 +717,21 @@
         const showHeaders = cats.length > 1;
         cats.forEach((cat)=>{
           if(showHeaders){ const l=document.createElement("div"); l.className="cat-label"; l.textContent=cat; list.appendChild(l); }
-          byCat[cat].forEach((t)=>{ const b=document.createElement("button"); b.className="tool-btn"; b.textContent=t.name; b.dataset.id=t.id; if(!C.home&&C.active&&C.active.id===t.id) b.classList.add("active"); b.onclick=()=>openTool(t.id); list.appendChild(b); });
+          byCat[cat].forEach((t)=>{
+            const b=document.createElement("button"); b.className="tool-btn"; b.dataset.id=t.id;
+            const name=document.createElement("span"); name.className="tool-name"; name.textContent=t.name; b.appendChild(name);
+            if(!C.home&&C.active&&C.active.id===t.id) b.classList.add("active");
+            // Flag a tool whose required engine is missing: dim it and add a small
+            // warning badge with the reason on hover. It stays clickable — opening
+            // it shows the full notice with a Settings link and Install option.
+            const eng = t.requiresEngine ? engineById(t.requiresEngine) : null;
+            if(eng && !eng.found){
+              b.classList.add("needs-engine");
+              b.title = `Needs ${eng.name} — click to set it up`;
+              const badge=document.createElement("span"); badge.className="tool-badge"; badge.textContent="!"; badge.setAttribute("aria-label",`Needs ${eng.name}`); b.appendChild(badge);
+            }
+            b.onclick=()=>openTool(t.id); list.appendChild(b);
+          });
         });
       }
 
@@ -717,9 +751,12 @@
           const grid=document.createElement("div"); grid.className="cat-grid";
           for(const t of byCat[cat]){
             const kind=(t.kind||"convert");
-            const card=document.createElement("div"); card.className="card"; card.title="Open "+t.name;
+            const eng = t.requiresEngine ? engineById(t.requiresEngine) : null;
+            const missing = eng && !eng.found;
+            const card=document.createElement("div"); card.className="card"+(missing?" needs-engine":""); card.title="Open "+t.name;
+            const needTag = missing ? `<span class="card-need" title="Needs ${eng.name} — set it up in Settings">Needs ${eng.name}</span>` : "";
             card.innerHTML =
-              `<div class="card-name">${t.name}<span class="card-kind">${kind}</span></div>`+
+              `<div class="card-name">${t.name}<span class="card-kind">${kind}</span>${needTag}</div>`+
               `<div class="card-desc">${t.description||""}</div>`+
               `<div class="card-flow">${fmtChips(t.inputFormats)}<span class="arrow">&rarr;</span>${fmtChips(t.outputFormats)}</div>`;
             card.onclick = ()=> openTool(t.id);
@@ -1174,20 +1211,37 @@
         refreshMergeUi();
       }
 
-      // The "Merge into one PDF" control only makes sense for a convert tool
-      // producing PDFs from more than one file. It converts each file, then folds
-      // the results into a single PDF — a one-pass shortcut for the separate
-      // convert-then-Merge-PDF workflow. The name field appears once it's ticked.
+      // The "Merge into one PDF" control belongs to any convert tool that can
+      // produce PDF. Rather than hide it until it's usable, show it greyed with
+      // the reason it's not ready yet — so it's discoverable. It converts each
+      // file, then folds the results into one PDF (a one-pass shortcut for the
+      // separate convert-then-Merge-PDF workflow). The name field appears once
+      // it's ticked and ready.
+      const outFormatNow = ()=> (($("formatSelect").value) || (C.active && (C.active.outputFormats||[])[0]) || "").toLowerCase();
       function refreshMergeUi(){
         const box=$("mergeBox"); if(!box) return;
-        const show = isConvert() && ($("formatSelect").value||"").toLowerCase()==="pdf" && eligible().length>=2;
-        box.hidden = !show;
-        const nameField=$("mergeNameField");
-        if(nameField) nameField.hidden = !(show && $("mergeOutput").checked);
+        const relevant = isConvert() && C.active && (C.active.outputFormats||[]).includes("pdf");
+        box.hidden = !relevant;
+        if(!relevant) return;
+
+        const isPdf = outFormatNow()==="pdf";
+        const n = eligible().length;
+        let reason = "";
+        if(!isPdf) reason = "Choose PDF as the output format to combine files into one.";
+        else if(n<2) reason = "Add at least two files to combine them into one PDF.";
+        const ready = isPdf && n>=2;
+
+        const cb=$("mergeOutput");
+        cb.disabled = !ready;
+        box.classList.toggle("is-disabled", !ready);
+        const rEl=$("mergeReason"); rEl.hidden = ready; rEl.textContent = reason;
+        $("mergeNameField").hidden = !(ready && cb.checked);
       }
       function mergeRequested(){
-        return isConvert() && ($("formatSelect").value||"").toLowerCase()==="pdf"
-          && $("mergeOutput") && $("mergeOutput").checked && eligible().length>=2;
+        const cb=$("mergeOutput");
+        return isConvert() && C.active && (C.active.outputFormats||[]).includes("pdf")
+          && cb && cb.checked && !cb.disabled
+          && outFormatNow()==="pdf" && eligible().length>=2;
       }
       function updateSummary(){
         const total=C.jobs.length, ok=eligible().length, skip=total-ok;
@@ -1407,6 +1461,10 @@
         // Ghostscript has no Windows Package Manager entry, so there is no
         // Install button to offer — the download page is the honest route.
         const b=$("gsInstall"); if(b) b.hidden = true;
+        // Show which file to grab from Ghostscript's confusing page, but only
+        // while it's missing — no need to nag once it's found.
+        const hint=$("gsHint");
+        if(hint){ const gs=engineById("ghostscript"); hint.textContent = (!p && gs && gs.downloadHint) || ""; hint.hidden = Boolean(p) || !hint.textContent; }
       }
       $("loGet").onclick=()=> hasApi && api.openEngineDownload("libreoffice");
       $("gsGet").onclick=()=> hasApi && api.openEngineDownload("ghostscript");
@@ -1436,6 +1494,9 @@
         try { ENGINES = await api.engineStatus(); } catch { ENGINES = []; }
         try { CAN_INSTALL = await api.canInstallEngine(); } catch { CAN_INSTALL = false; }
         paintEngineNotice(); paintEngineWarn();
+        // Repaint the tool lists so the per-tool availability badges reflect the
+        // latest status (e.g. an engine that was just installed loses its badge).
+        renderRail(); renderCatalog();
       }
 
       function paintEngineNotice(){
@@ -1462,13 +1523,20 @@
         if(!eng || eng.found){ box.hidden=true; return; }
         fillNotice($("engineWarnText"), eng.name + " is not installed.",
           "This tool needs it to run." + (eng.alternative ? " " + eng.alternative : "") +
-          " Already have it? Set the path in Settings.");
+          " Already have it? Point the app at it under Settings.");
         $("engineWarnGet").dataset.engine = eng.id;
         // One-click install only where a verified package actually exists.
         const inst=$("engineWarnInstall");
         inst.dataset.engine = eng.id;
         inst.hidden = !(eng.winget && CAN_INSTALL);
         inst.textContent = `Install ${eng.name}`;
+        // The Settings jump targets this engine's row so the user lands on the
+        // exact dependency, not the top of the page.
+        $("engineWarnSettings").dataset.engine = eng.id;
+        // Spell out which file to grab — the download pages are confusing.
+        const hint=$("engineWarnHint");
+        hint.textContent = eng.downloadHint || "";
+        hint.hidden = !eng.downloadHint;
         box.hidden=false;
       }
 
@@ -1511,6 +1579,19 @@
         const id=$("engineWarnGet").dataset.engine;
         if(hasApi && id) api.openEngineDownload(id);
       };
+
+      // Open Settings and land on a specific engine's row, briefly highlighting it
+      // so it's obvious which dependency the user came here to set up.
+      function goToEngineSettings(id){
+        showTab("settings");
+        const row = id && $("engRow-"+id);
+        const target = row || $("engineSettings");
+        if(target){
+          target.scrollIntoView({ behavior:"smooth", block:"center" });
+          if(row){ row.classList.add("flash"); setTimeout(()=> row.classList.remove("flash"), 1600); }
+        }
+      }
+      $("engineWarnSettings").onclick = ()=> goToEngineSettings($("engineWarnSettings").dataset.engine);
 
       // ── Updates (manual only) ──────────────────────────────────
       // The Check button is the app's one and only network call. Nothing here

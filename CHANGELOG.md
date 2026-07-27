@@ -13,8 +13,24 @@ All notable changes to Jdot Utilities. Dates are YYYY-MM-DD.
 - It's cautious about your work: the individual files are converted first and
   only folded in once the merge succeeds. If a merge ever fails, or fewer than
   two files convert, the individual PDFs are left in place rather than lost.
-- The option only appears when it applies — a document tool, a PDF target, and
-  at least two files queued.
+- The control shows greyed with the reason it isn't ready yet (choose PDF /
+  add a second file), rather than vanishing — so it's discoverable.
+
+### See which tools need what, before you hit a wall
+- **Tools that need an external engine are now flagged** everywhere they appear
+  — a warning badge and dimming in the tool list and the All Tools catalog — so
+  you can see at a glance that, say, the Office converters need LibreOffice or
+  Compress/PDF-A needs Ghostscript.
+- **A blocked tool links straight to Settings**, landing on and highlighting the
+  exact dependency row, instead of leaving you to hunt for it.
+- **The Ghostscript download is no longer a guessing game.** Its download page
+  lists two licences and several files with no guidance; the app now tells you
+  exactly which one to get — the free AGPL "Windows (64 bit)" installer — both on
+  the tool's notice and in Settings. LibreOffice gets a similar hint.
+- **Fixed:** the one-click *Install* button (for engines available via Windows
+  Package Manager, i.e. LibreOffice) never appeared, because the engine status
+  wasn't reporting installability to the interface. It shows now when winget is
+  present.
 
 ## 1.2.1 — 2026-07-24
 

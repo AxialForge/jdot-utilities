@@ -28,6 +28,9 @@ const ENGINES = {
     // and only ever runs on an explicit click.
     winget: "TheDocumentFoundation.LibreOffice",
     sizeHint: "about 400 MB",
+    // Shown next to the "Download page" button so the download page is less of a
+    // guessing game. LibreOffice's page is simpler than Ghostscript's, but still.
+    downloadHint: "On the download page, use the main installer for Windows (x86_64) — the big Download button.",
     locate: (s) => locateSoffice(s.libreOfficePath),
   },
   ghostscript: {
@@ -43,6 +46,11 @@ const ENGINES = {
     // page is the honest option here rather than a button that can't work.
     winget: null,
     sizeHint: "about 60 MB",
+    // The Ghostscript page is genuinely confusing: two licences (AGPL vs
+    // Commercial) and 32/64-bit rows, with no "which one?" guidance. For a normal
+    // Windows PC the answer is always the same, so spell it out.
+    downloadHint:
+      "Ghostscript's page lists two licences and several files. For a normal Windows PC choose the AGPL Release column (it's free) and the row “Ghostscript for Windows (64 bit)” — the installer is named like gs10051w64.exe. Run it, then come back; the app will detect it.",
     locate: (s) => locateGs(s.ghostscriptPath),
   },
 };
@@ -83,6 +91,13 @@ function engineStatus(settingsObj = {}) {
       alternative: e.alternative || null,
       url: e.url,
       settingKey: e.settingKey,
+      // A plain boolean, not the package id: the renderer only needs to know
+      // whether a one-click install is possible, and the id stays server-side so
+      // it can never be steered from the UI. Without this the Install button was
+      // gated on an always-undefined field and so never appeared.
+      winget: Boolean(e.winget),
+      sizeHint: e.sizeHint || null,
+      downloadHint: e.downloadHint || null,
       found: Boolean(path),
       path,
     };

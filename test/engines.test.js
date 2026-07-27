@@ -24,6 +24,19 @@ test("engineStatus reports every engine with a found flag", () => {
   }
 });
 
+test("engineStatus exposes winget as a boolean and carries the download hint", () => {
+  const status = engineStatus({});
+  const lo = status.find((s) => s.id === "libreoffice");
+  const gs = status.find((s) => s.id === "ghostscript");
+  // The renderer gates its one-click Install button on this; it must be a
+  // boolean, never the raw package id, and never undefined (the old bug).
+  assert.strictEqual(lo.winget, true, "LibreOffice is installable via winget");
+  assert.strictEqual(gs.winget, false, "Ghostscript has no winget package");
+  // The download hint helps users pick the right file on a confusing page.
+  assert.match(gs.downloadHint, /64 bit/i);
+  assert.ok(lo.downloadHint, "LibreOffice should carry a hint too");
+});
+
 test("an explicit bad override reads as not found rather than throwing", () => {
   const status = engineStatus({
     libreOfficePath: "C:\\nope\\soffice.exe",

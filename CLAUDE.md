@@ -200,8 +200,19 @@ To retheme, edit those token blocks only — all accent colour is confined to th
   `pdf-shrink` covers plain compression with **nothing installed**.
 - **A tool that shells out must declare `requiresEngine`** ("libreoffice" /
   "ghostscript"). `engines.js` owns the list; `registry.describe()` drops unknown
-  ids. That declaration is the *only* thing driving the startup banner and the
-  per-tool warning — never hardcode an engine check in the renderer.
+  ids. That declaration is the *only* thing driving the startup banner, the
+  per-tool warning, and the **tool-list / catalog availability badges** (a tool
+  whose engine is missing is dimmed with a "!" and links to its Settings row) —
+  never hardcode an engine check in the renderer. `refreshEngines()` repaints the
+  rail and catalog so a just-installed engine drops its badge.
+- **`engineStatus()` must surface `winget` as a boolean.** The renderer gates its
+  one-click *Install* button on `e.winget && CAN_INSTALL`. For a long time
+  `engineStatus` didn't include `winget` at all, so the field was `undefined` and
+  the Install button (LibreOffice's, the only winget-backed engine) **never
+  appeared** even when winget was present. The status object exposes
+  `winget: Boolean(e.winget)` (a boolean, never the package id — the id stays
+  server-side so the install target can't be steered from the UI), plus
+  `downloadHint`/`sizeHint`. `test/engines.test.js` locks the boolean + hint.
 - **`sharp` here has no BMP or ICO support, in either direction** (no `magick`
   loader — verified against the prebuilt binary, don't assume the docs). Both
   formats route through `bmp.js` / `ico.js`. An ICO frame can be a PNG *or* a
