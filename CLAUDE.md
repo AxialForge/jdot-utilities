@@ -73,6 +73,16 @@ All three go through **one IPC surface**: `convert:run` for converters,
 `util:run` for collect/explode. Merge PDF is `src/tools/pdf-merge.js` — an ordinary
 discovered `collect` tool, not a special case.
 
+**Convert-then-merge** (the "Merge all into one PDF" checkbox) is a batch-level
+feature, *not* a tool: a `convert` tool is inherently N-in→N-out, so combining
+its outputs can't live inside `convert()`. The `convert:run` handler converts
+every file to PDF first, then — only when the target is PDF and ≥2 files
+succeeded — calls `convert.mergeConvertedPdfs()` and **deletes the per-file
+intermediates**. A merge failure or <2 successes leaves the individual PDFs in
+place, so a convert is never lost to a failed merge. `mergeConvertedPdfs` is
+node-tested (`test/mergeconvert.test.js`); the full md→pdf→merge path is covered
+under Electron in `test/electron-ops.js`.
+
 ### Directory map
 ```
 src/

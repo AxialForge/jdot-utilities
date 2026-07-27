@@ -107,4 +107,26 @@ async function runBatch({
   return results;
 }
 
-module.exports = { runBatch, outputPathFor };
+/**
+ * Combine a convert batch's per-file PDF outputs into one PDF, in queue order.
+ * Backs the "Merge into one PDF" convert option: every file is converted
+ * normally first, then the successful outputs are concatenated. Returns
+ * `{ outputPath, pages, sources, warnings, merged, inputs }` — `inputs` is the
+ * list of per-file paths that were folded in, so the caller can delete the
+ * now-redundant intermediates — or `null` when there are fewer than two outputs
+ * to merge (in which case the caller leaves the individual files as-is).
+ *
+ * pdfops is required lazily so this module's load cost stays tiny for callers
+ * that never merge, and so the pure batch runner above keeps no PDF dependency.
+ */
+async function mergeConvertedPdfs({ results, outputPath, signal, onProgress }) {
+  const inputs = (results || [])
+    .filter((r) => r && r.ok && r.outputPath)
+    .map((r) => r.outputPath);
+  if (inputs.length < 2) return null;
+  const { mergePdfs } = require("./pdfops");
+  const info = await mergePdfs(inputs, outputPath, onProgress, { signal });
+  return { ...info, merged: inputs.length, inputs };
+}
+
+module.exports = { runBatch, outputPathFor, mergeConvertedPdfs };

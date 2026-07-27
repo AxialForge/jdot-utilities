@@ -2,6 +2,20 @@
 
 All notable changes to Jdot Utilities. Dates are YYYY-MM-DD.
 
+## 1.3.0 — 2026-07-27
+
+### Convert many files straight into one PDF
+- When you batch-convert files to PDF (Word → PDF and the other document paths),
+  a new **"Merge all into one PDF"** option combines the results into a single
+  file in one pass — no more converting, then reaching for the Merge PDF tool
+  afterwards. The pages follow your queue order (sort the list to control it),
+  and you can name the combined file.
+- It's cautious about your work: the individual files are converted first and
+  only folded in once the merge succeeds. If a merge ever fails, or fewer than
+  two files convert, the individual PDFs are left in place rather than lost.
+- The option only appears when it applies — a document tool, a PDF target, and
+  at least two files queued.
+
 ## 1.2.1 — 2026-07-24
 
 ### Fixed

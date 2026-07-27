@@ -2,7 +2,7 @@ const { app, BrowserWindow, ipcMain, dialog, shell } = require("electron");
 const path = require("node:path");
 const fs = require("node:fs");
 const { loadTools, describe, kindOf } = require("./registry");
-const { runBatch } = require("./convert");
+const { runBatch, mergeConvertedPdfs } = require("./convert");
 const { runCollect, runExplode } = require("./ops");
 const { pageCount, inspect: inspectPdf } = require("./pdfops");
 const { listFiles } = require("./fsutil");
@@ -286,8 +286,27 @@ ipcMain.handle("file:pickOne", async () => {
 const jobs = new Map();
 let nextJobId = 1;
 
+// A PDF filename picked by the user, made safe and collision-free in `dir`.
+// Strips path separators and other characters Windows rejects, drops any
+// extension the user typed, and appends " (n)" until the name is free — so the
+// merged output never silently clobbers a file already in the folder.
+function freeMergePath(dir, name, ext) {
+  const safe =
+    String(name || "merged")
+      .replace(/\.[^.]*$/, "")
+      .replace(/[\\/:*?"<>|]/g, "_")
+      .trim() || "merged";
+  let candidate = path.join(dir, `${safe}.${ext}`);
+  let n = 1;
+  while (fs.existsSync(candidate)) {
+    candidate = path.join(dir, `${safe} (${n}).${ext}`);
+    n += 1;
+  }
+  return candidate;
+}
+
 ipcMain.handle("convert:run", async (event, payload) => {
-  const { toolId, files, outputFormat, options, outputDir } = payload;
+  const { toolId, files, outputFormat, options, outputDir, mergeOutput, mergeName } = payload;
   const tool = tools.get(toolId);
   if (!tool) return { error: `Unknown tool: ${toolId}` };
 
@@ -296,6 +315,9 @@ ipcMain.handle("convert:run", async (event, payload) => {
   const jobId = nextJobId++;
   jobs.set(jobId, controller);
   event.sender.send("convert:started", { jobId, total: files.length });
+
+  // "Merge into one PDF" only applies when the target actually is PDF.
+  const wantMerge = !!mergeOutput && String(outputFormat).toLowerCase() === "pdf";
 
   try {
     const results = await runBatch({
@@ -309,7 +331,41 @@ ipcMain.handle("convert:run", async (event, payload) => {
       onProgress: (p) => event.sender.send("convert:progress", { ...p, jobId }),
       onFileDone: (r) => event.sender.send("convert:fileDone", { ...r, jobId }),
     });
-    return { jobId, results, cancelled: controller.signal.aborted };
+
+    // Convert first, then fold the successful outputs into one PDF and drop the
+    // per-file intermediates. If the merge throws, or fewer than two files
+    // converted, the individual PDFs are simply left in place — the user never
+    // loses a conversion to a failed merge.
+    let merged = null;
+    if (wantMerge && !controller.signal.aborted) {
+      const okOutputs = results.filter((r) => r && r.ok && r.outputPath).map((r) => r.outputPath);
+      if (okOutputs.length >= 2) {
+        const dir = outputDir || path.dirname(okOutputs[0]);
+        const outPath = freeMergePath(dir, mergeName, "pdf");
+        try {
+          merged = await mergeConvertedPdfs({
+            results,
+            outputPath: outPath,
+            signal: controller.signal,
+            onProgress: (fraction) =>
+              event.sender.send("convert:progress", { jobId, index: -1, name: "Merging…", fraction }),
+          });
+          if (merged && Array.isArray(merged.inputs)) {
+            for (const p of merged.inputs) {
+              try {
+                fs.unlinkSync(p);
+              } catch {
+                /* a source that vanished mid-run isn't worth failing the merge */
+              }
+            }
+          }
+        } catch (err) {
+          merged = { error: err.message || String(err) };
+        }
+      }
+    }
+
+    return { jobId, results, cancelled: controller.signal.aborted, merged };
   } finally {
     jobs.delete(jobId);
   }

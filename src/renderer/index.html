@@ -161,6 +161,11 @@
 
       .opt-help { font-size:11.5px; color:var(--muted); line-height:1.45; margin-top:5px;
         padding-left:8px; border-left:2px solid var(--line); }
+      #mergeBox { margin-top:4px; }
+      .merge-toggle { display:flex; align-items:center; gap:8px; font-size:13px; }
+      .merge-toggle input { width:auto; }
+      .merge-name { display:flex; align-items:center; gap:6px; color:var(--muted); font-size:12px; }
+      .merge-name input { flex:1; }
 
       /* ── Visual page picker ─────────────────────────────────── */
       .pages { border:1px solid var(--line); border-radius:9px; background:var(--panel);
@@ -336,6 +341,14 @@
           <div class="ctl-head">Output</div>
           <label class="field" id="formatField"><span class="field-label">Format</span><select id="formatSelect" class="mono"></select></label>
           <div id="optionFields"></div>
+          <div id="mergeBox" hidden>
+            <label class="field"><span class="field-label">Combine</span>
+              <span class="merge-toggle"><input type="checkbox" id="mergeOutput"> Merge all into one PDF</span>
+            </label>
+            <label class="field" id="mergeNameField" hidden><span class="field-label">Merged name</span>
+              <span class="merge-name"><input id="mergeName" value="merged" spellcheck="false">.pdf</span>
+            </label>
+          </div>
           <p class="saveline" id="saveLine"></p>
           <button class="btn primary block" id="convertBtn" disabled>Convert</button>
           <button class="btn block" id="cancelBtn" hidden>Cancel</button>
@@ -1158,6 +1171,23 @@
         if(blocked) $("runNote").textContent = "Remove the unreadable files to continue.";
         else if(isCollect() && n && n<min) $("runNote").textContent = `Add at least ${min} files.`;
         else if(!C.result) $("runNote").textContent = "";
+        refreshMergeUi();
+      }
+
+      // The "Merge into one PDF" control only makes sense for a convert tool
+      // producing PDFs from more than one file. It converts each file, then folds
+      // the results into a single PDF — a one-pass shortcut for the separate
+      // convert-then-Merge-PDF workflow. The name field appears once it's ticked.
+      function refreshMergeUi(){
+        const box=$("mergeBox"); if(!box) return;
+        const show = isConvert() && ($("formatSelect").value||"").toLowerCase()==="pdf" && eligible().length>=2;
+        box.hidden = !show;
+        const nameField=$("mergeNameField");
+        if(nameField) nameField.hidden = !(show && $("mergeOutput").checked);
+      }
+      function mergeRequested(){
+        return isConvert() && ($("formatSelect").value||"").toLowerCase()==="pdf"
+          && $("mergeOutput") && $("mergeOutput").checked && eligible().length>=2;
       }
       function updateSummary(){
         const total=C.jobs.length, ok=eligible().length, skip=total-ok;
@@ -1179,7 +1209,8 @@
       $("clearFiles").onclick=()=>{ C.jobs=[]; C.done=0; C.result=null; $("runNote").textContent=""; $("barFill").style.width="0%";
         P.path=null; P.sel.clear(); P.thumbs=[]; P.token++; renderQueue(); updateConvert(); refreshPicker(); };
       $("fileInput").onchange=(e)=>{ const p=[...e.target.files].map((f)=>f.name); C.home ? routeFiles(p) : addPaths(p); e.target.value=""; };
-      $("formatSelect").onchange=renderQueue;
+      $("formatSelect").onchange=()=>{ renderQueue(); refreshMergeUi(); };
+      $("mergeOutput").onchange=refreshMergeUi;
       $("sortApply").onclick=applySort;
 
       const pathsFrom=(ev)=>{ const out=[]; for(const f of ev.dataTransfer.files){ const p=hasApi?api.pathForFile(f):f.name; if(p) out.push(p); } return out; };
@@ -1229,15 +1260,32 @@
         // The main process indexes its own file list, which is the eligible subset —
         // keep a lookup so progress lands on the right queue row.
         C.rowFor = elig.map(({i})=>i);
-        const { results, error, cancelled } = await api.convert({
+        const wantMerge = mergeRequested();
+        const { results, error, cancelled, merged } = await api.convert({
           toolId:C.active.id, files:elig.map(({j})=>j.path),
           outputFormat:$("formatSelect").value, options:collectOptions(),
           outputDir:C.saveDir||SETTINGS.defaultOutputDir,
+          mergeOutput: wantMerge, mergeName: ($("mergeName") && $("mergeName").value) || "merged",
         });
         if(error){ setStatus("Error: "+error); return; }
         const okc=results.filter((r)=>r.ok).length;
         const cx=results.filter((r)=>r.cancelled).length;
         setStatus(cancelled||cx ? `Cancelled — ${okc} converted, ${cx} skipped` : `Done — ${okc}/${results.length} converted`);
+
+        // Report the merge outcome. A merge failure never loses the individual
+        // conversions — the main process leaves them in place — so say so plainly.
+        if(merged && merged.error){
+          $("runNote").textContent = `Converted ${okc} file(s), but merging failed: ${merged.error} The individual PDFs were kept.`;
+        } else if(merged){
+          setStatus(`Merged ${merged.merged} files → one PDF (${merged.pages} page${merged.pages===1?"":"s"}).`);
+          const warn = merged.warnings && merged.warnings.length ? merged.warnings.join(" ")+" " : "";
+          $("runNote").innerHTML = warn + `<a id="revealMerged">Show in folder</a>`;
+          const a=$("revealMerged"); if(a) a.onclick=()=> api.reveal(merged.outputPath);
+        } else if(wantMerge && okc>=2){
+          // Asked to merge, ≥2 converted, yet no merged result — shouldn't happen,
+          // but don't leave the "Done" line implying a single file was produced.
+          $("runNote").textContent = "Converted, but the files could not be merged.";
+        }
       }
 
       async function runSingleShot(elig){

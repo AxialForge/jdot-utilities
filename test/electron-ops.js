@@ -11,7 +11,7 @@ const { PDFDocument, StandardFonts } = require("pdf-lib");
 
 const { loadTools, kindOf } = require("../src/main/registry");
 const { runCollect, runExplode } = require("../src/main/ops");
-const { runBatch } = require("../src/main/convert");
+const { runBatch, mergeConvertedPdfs } = require("../src/main/convert");
 
 const results = [];
 async function check(name, fn) {
@@ -156,6 +156,38 @@ app.whenReady().then(async () => {
     assert.ok(/7788/.test(text), "OCR text: " + JSON.stringify(text));
     await require("../src/main/ocr").shutdown();
   });
+
+  await check("convert-then-merge: real md→pdf outputs folded into one PDF", async () => {
+    // Mirrors main.js's convert:run merge path: convert each file to a PDF via
+    // the discovered document tool (Electron printToPDF), then combine the
+    // results and delete the intermediates.
+    const d = fs.mkdtempSync(path.join(os.tmpdir(), "jdot-eops-"));
+    const a = path.join(d, "one.md");
+    const b = path.join(d, "two.md");
+    fs.writeFileSync(a, "# One\n\nFirst document body.");
+    fs.writeFileSync(b, "# Two\n\nSecond document body.");
+
+    const conv = await runBatch({
+      tool: tools.get("document-convert"),
+      files: [a, b],
+      outputFormat: "pdf",
+      outputDir: d,
+      options: {},
+    });
+    assert.ok(conv.every((r) => r.ok), JSON.stringify(conv));
+
+    const merged = await mergeConvertedPdfs({ results: conv, outputPath: path.join(d, "merged.pdf") });
+    assert.ok(merged, "merge returned null for two good PDFs");
+    assert.strictEqual(merged.merged, 2);
+    assert.ok(merged.pages >= 2, `expected >=2 pages, got ${merged.pages}`);
+
+    // main.js removes the per-file intermediates after a successful merge.
+    for (const p of merged.inputs) fs.unlinkSync(p);
+    assert.ok(merged.inputs.every((p) => !fs.existsSync(p)), "intermediates should be gone");
+    assert.ok(fs.existsSync(path.join(d, "merged.pdf")), "merged PDF missing");
+  });
+
+  await require("../src/main/pdfrender").shutdown?.();
 
   const failures = results.filter((r) => r[0] === "FAIL");
   console.log("\n── Electron ops smoke test ──");
