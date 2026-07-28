@@ -2,7 +2,24 @@
 
 All notable changes to Jdot Utilities. Dates are YYYY-MM-DD.
 
-## 1.3.0 — 2026-07-27
+## 2.0.0 — 2026-07-27
+
+### New: Documents & Ebooks — a whole new converter
+- A new tool converts between **Word (.docx), OpenDocument (.odt), EPUB, LaTeX
+  source (.tex), reStructuredText, Org, AsciiDoc, Markdown, HTML, and Jupyter
+  notebooks (.ipynb)** — powered by a **bundled** pandoc, so it works the moment
+  you install, with nothing to download.
+- **Still completely offline.** pandoc runs in a locked-down sandbox: it can read
+  only the file you're converting and never touches the network — even if a
+  document references a remote image. (Images already embedded in a Word or EPUB
+  file are preserved, and pulled out into a folder when you convert to a text
+  format.)
+- **No PDF here on purpose** — pandoc's PDF output needs a multi-gigabyte LaTeX
+  install, and the app already makes great PDFs. Use Document Converter or
+  Word → PDF for those.
+
+This is why the version jumps to 2.0 — the installer is a bit larger (~40 MB) to
+carry the bundled engine.
 
 ### Convert many files straight into one PDF
 - When you batch-convert files to PDF (Word → PDF and the other document paths),

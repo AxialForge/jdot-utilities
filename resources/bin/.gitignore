@@ -1,0 +1,5 @@
+# The bundled sidecar binaries (pandoc.exe, and a Ghostscript build if added)
+# are large and fetched by CI at build time — never commit them. This folder is
+# kept in the tree (via this file) so extraResources has somewhere to copy into.
+*
+!.gitignore

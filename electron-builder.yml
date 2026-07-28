@@ -30,13 +30,16 @@ extraResources:
   # OCR English model (offline — no CDN fetch). ocr.js reads it from resources/tessdata.
   - from: resources/tessdata
     to: tessdata
-  # A bundled Ghostscript (Compress / PDF-A) would go here; gs.js also detects an
-  # installed copy, so this is optional at package time:
-  # - from: resources/bin
-  #   to: bin
+  # Bundled sidecar binaries, resolved at runtime from process.resourcesPath/bin:
+  #   pandoc.exe   — Documents & Ebooks converter (pandoc.js)
+  #   gswin64c.exe — optional Ghostscript for Compress / PDF-A (gs.js), if added
+  # CI fetches pandoc into resources/bin before the build (see build.yml); the
+  # 222 MB binary is never committed (resources/bin/.gitignore).
+  - from: resources/bin
+    to: bin
 
-# To bundle Ghostscript into the .exe (so Compress / PDF-A works with no separate
-# install), drop gswin64c.exe + its DLLs in resources/bin/ and add the entry above.
+# To also bundle Ghostscript (so Compress / PDF-A needs no separate install),
+# drop gswin64c.exe + its DLLs into resources/bin/ — gs.js already looks there.
 
 # Where the updater looks for new versions. electron-builder also uses this to
 # generate `latest.yml` (the version + SHA-512 manifest the updater reads) into

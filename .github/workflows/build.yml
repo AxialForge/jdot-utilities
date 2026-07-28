@@ -29,8 +29,27 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Quality gate. The Node suite runs the data/OCR/PDF engines; Ghostscript
-      # isn't on the runner, so those tests skip themselves rather than fail.
+      # Fetch the bundled pandoc (Documents & Ebooks tool) into resources/bin.
+      # Pinned + checksum-verified for reproducibility; the 222 MB binary is not
+      # committed. Done before the tests so pandoc.test.js runs for real rather
+      # than skipping, and before the build so electron-builder bundles it.
+      - name: Fetch bundled pandoc
+        shell: pwsh
+        run: |
+          $ver = "3.10.1"
+          $sha = "4725a1883e2171c2e181e6fd45003acb59ca4e9cbe031fdd3b79ef0d697d36aa"
+          $url = "https://github.com/jgm/pandoc/releases/download/$ver/pandoc-$ver-windows-x86_64.zip"
+          New-Item -ItemType Directory -Force resources/bin | Out-Null
+          Invoke-WebRequest $url -OutFile pandoc.zip
+          $got = (Get-FileHash pandoc.zip -Algorithm SHA256).Hash.ToLower()
+          if ($got -ne $sha) { Write-Error "pandoc checksum mismatch: got $got expected $sha"; exit 1 }
+          Expand-Archive pandoc.zip -DestinationPath pandoc_x -Force
+          $exe = Get-ChildItem pandoc_x -Recurse -Filter pandoc.exe | Select-Object -First 1
+          Copy-Item $exe.FullName resources/bin/pandoc.exe -Force
+          & resources/bin/pandoc.exe --version | Select-Object -First 1
+
+      # Quality gate. The Node suite runs the data/OCR/PDF/pandoc engines;
+      # Ghostscript isn't on the runner, so those tests skip themselves.
       - name: Run tests
         run: npm test
 

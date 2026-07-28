@@ -107,6 +107,7 @@ src/
     dataconv.js          JSON/YAML/CSV/TSV/XML conversion (pure JS)
     gs.js                Ghostscript locator + compress / PDF-A
     office.js            LibreOffice locator + headless convert (unique profile per call)
+    pandoc.js            Bundled pandoc sidecar: locate + run. ALWAYS --sandbox (offline)
     engines.js           The optional external engines in one place (status + download URLs)
     pdfshrink.js         Ghostscript-free PDF compression (pdfjs render -> JPEG -> pdf-lib)
     bmp.js  ico.js       Hand-written BMP and ICO codecs (libvips supports neither)
@@ -115,6 +116,7 @@ src/
     image-convert.js     sharp + heic-convert
     document-convert.js  marked/turndown/mammoth/html-to-docx + Electron printToPDF
     office-convert.js    Word/Sheets/Slides families (array export) via office.js
+    pandoc-convert.js    Documents & Ebooks: docx/odt/epub/tex/rst/org/adoc/html/md/ipynb via pandoc.js
     pdf-merge.js         Merge PDFs (collect)
     pdf-split.js         Split PDF: per-page / every-N / ranges (explode)
     pdf-pages.js         Rotate / Delete / Extract pages (three convert tools, one file)
@@ -162,6 +164,10 @@ async convert({ inputPath, outputPath, outputFormat, options, signal, onProgress
   LibreOffice) — a true 1:1 render; the other targets still use mammoth.
 - **Office** (LibreOffice, three families): Word (docx/doc/odt/rtf), Spreadsheets
   (xlsx/xls/ods/csv), Presentations (pptx/ppt/odp) — each within-family + → pdf.
+- **Documents & Ebooks** (`pandoc-convert.js`, bundled pandoc): converts between
+  md, html, docx, odt, epub, latex (.tex), rst, org, asciidoc (.adoc) and ipynb.
+  Bundled (no install), fully offline via `--sandbox`. **No PDF** — pandoc→PDF
+  needs a multi-GB LaTeX install and the app already makes PDFs.
 - **PDF toolkit** (offline, auto-discovered tools):
   - Merge PDFs (collect), Images → PDF (collect, sharp + pdf-lib)
   - Split PDF (explode): per-page / every-N / custom ranges
@@ -198,6 +204,26 @@ To retheme, edit those token blocks only — all accent colour is confined to th
   then an installed one, then the `ghostscriptPath` setting. Absent → the tool
   throws a clear message; its tests skip. Compress/PDF-A is `pdf-optimize`.
   `pdf-shrink` covers plain compression with **nothing installed**.
+- **pandoc MUST run with `--sandbox` — it is the offline guarantee, not a
+  nicety.** Verified against the shipped binary: without `--sandbox`, pandoc
+  fetches remote resources named in a document (e.g. an `<img src="https://…">`
+  while writing docx/epub) — a real outbound request, the same class of silent
+  egress the HTML→PDF path had to block. `--sandbox` restricts pandoc's IO to the
+  input files on the command line: no network, no reading arbitrary local files.
+  The cost is that images referenced as *separate local files* aren't embedded;
+  images already inside a container (docx/odt/epub) survive rich→rich and are
+  written out via `--extract-media` on rich→text. Never drop `--sandbox` to "fix"
+  a missing image. `test/pandoc.test.js` covers this.
+- **pandoc is bundled (resources/bin/pandoc.exe), not an optional engine.** It's
+  ~222 MB unpacked (a ~40 MB download); CI fetches a **pinned, checksum-verified**
+  version into `resources/bin` before tests+build (`build.yml`), and it's shipped
+  via `extraResources` (`to: bin`). The binary is **never committed**
+  (`resources/bin/.gitignore`). `pandoc.js` resolves it from
+  `process.resourcesPath/bin` when packaged, the project's `resources/bin` when
+  run from source (so `npm test` uses it too), then PATH. Because it's bundled,
+  `pandoc-convert` declares **no** `requiresEngine` — no badge, no install prompt.
+  Bumping the pinned version means updating both the URL and the SHA in
+  `build.yml`.
 - **A tool that shells out must declare `requiresEngine`** ("libreoffice" /
   "ghostscript"). `engines.js` owns the list; `registry.describe()` drops unknown
   ids. That declaration is the *only* thing driving the startup banner, the
@@ -353,8 +379,10 @@ Bigger engines (sidecar pattern in `_template.js` / `office.js`):
   prefer a bundled path, then the detected one. Needs a CI download step, and
   can't be verified locally without LibreOffice present.
 - **Auto-update** via `electron-updater` against GitHub Releases.
-- `pandoc` sidecar → LaTeX, reStructuredText, AsciiDoc, Org, EPUB, ipynb… (also
-  replaces `html-to-docx` + `mammoth` with real `.docx` I/O). **Chosen; deferred.**
+- ~~`pandoc` sidecar → LaTeX, RST, AsciiDoc, Org, EPUB, ipynb…~~ **DONE (v2.0.0)**
+  — `pandoc-convert.js` + `pandoc.js`, bundled, `--sandbox` offline. It does *not*
+  replace `mammoth`/`html-to-docx` in Document Converter (kept separate, per the
+  "new tool" decision); a future pass could route docx writing through it.
 - `calibre` → ebooks (epub/mobi/azw3/fb2).
 - Video/audio via bundled `ffmpeg` (wire the existing hardware-acceleration setting
   to `-hwaccel`).
