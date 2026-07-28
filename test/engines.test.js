@@ -3,8 +3,8 @@ const assert = require("node:assert");
 const { ENGINES, engineStatus, missingEngines, isEngine } = require("../src/main/engines");
 const { describe, loadTools } = require("../src/main/registry");
 
-test("both optional engines are declared with what they're for", () => {
-  assert.deepStrictEqual(Object.keys(ENGINES).sort(), ["ghostscript", "libreoffice"]);
+test("the optional engines are declared with what they're for", () => {
+  assert.deepStrictEqual(Object.keys(ENGINES).sort(), ["calibre", "ghostscript", "libreoffice"]);
   for (const e of Object.values(ENGINES)) {
     assert.ok(e.name, "engine needs a display name");
     assert.ok(e.needed, "engine must say what breaks without it");
@@ -15,7 +15,7 @@ test("both optional engines are declared with what they're for", () => {
 
 test("engineStatus reports every engine with a found flag", () => {
   const status = engineStatus({});
-  assert.strictEqual(status.length, 2);
+  assert.strictEqual(status.length, 3);
   for (const s of status) {
     assert.strictEqual(typeof s.found, "boolean");
     assert.ok(Object.prototype.hasOwnProperty.call(s, "path"));
@@ -30,8 +30,10 @@ test("engineStatus exposes winget as a boolean and carries the download hint", (
   const gs = status.find((s) => s.id === "ghostscript");
   // The renderer gates its one-click Install button on this; it must be a
   // boolean, never the raw package id, and never undefined (the old bug).
+  const ca = status.find((s) => s.id === "calibre");
   assert.strictEqual(lo.winget, true, "LibreOffice is installable via winget");
   assert.strictEqual(gs.winget, false, "Ghostscript has no winget package");
+  assert.strictEqual(ca.winget, true, "Calibre is installable via winget");
   // The download hint helps users pick the right file on a confusing page.
   assert.match(gs.downloadHint, /64 bit/i);
   assert.ok(lo.downloadHint, "LibreOffice should carry a hint too");
@@ -81,6 +83,7 @@ test("the tools that shell out declare the engine they need", () => {
     "office-sheet": "libreoffice",
     "office-slides": "libreoffice",
     "pdf-optimize": "ghostscript",
+    "ebook-convert": "calibre",
   };
   for (const [id, engine] of Object.entries(expected)) {
     const t = tools.get(id);
@@ -92,7 +95,7 @@ test("the tools that shell out declare the engine they need", () => {
 test("self-contained tools declare no engine", () => {
   const tools = loadTools();
   // pdf-shrink is the whole point: compression with nothing installed.
-  for (const id of ["pdf-shrink", "image-convert", "pdf-merge", "ocr-text", "data-convert"]) {
+  for (const id of ["pdf-shrink", "image-convert", "pdf-merge", "ocr-text", "data-convert", "pandoc-convert", "media-convert"]) {
     const t = tools.get(id);
     assert.ok(t, `${id} not discovered`);
     assert.strictEqual(describe(t).requiresEngine, null, `${id} must not need an engine`);

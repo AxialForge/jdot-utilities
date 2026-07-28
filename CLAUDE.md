@@ -52,12 +52,15 @@ Two layers, because the PDF path needs Chromium:
 - **Tools/utilities** (`src/tools/`): each file exports a descriptor (or an array
   of them). The registry auto-loads every `*.js` that isn't prefixed `_`.
 
-### Two utility tabs (Convert / PDF Tools)
-The top bar has two utility sections plus Settings. Membership is data-driven:
-a tool with `category === "PDF"` shows under **PDF Tools**, everything else under
-**Convert**. Both share one stage; switching tabs just retargets the rail
-(`showTab`/`renderRail` in `index.html`). Add a PDF tool and it lands in the PDF
-tab automatically — no wiring.
+### Three utility tabs (Convert / PDF Tools / Video & Audio)
+The top bar has three utility sections plus Settings. Membership is data-driven
+by category (`sectionOf` in `index.html`): `category === "PDF"` → **PDF Tools**,
+`category === "Media"` → **Video & Audio**, everything else → **Convert**. They
+share one stage; switching tabs retargets the rail (`showTab`/`renderRail`).
+`SECTION_TITLE` maps each section to its rail header. Convert opens on Home
+(auto-detect drop); PDF and Media have no Home, so they select their first tool.
+Add a `category:"Media"` (or `"PDF"`) tool and it lands in the right tab
+automatically — no wiring.
 
 ### Utility kinds (the core abstraction)
 A descriptor declares a `kind` that says how files flow. This is what lets a PDF
@@ -108,6 +111,8 @@ src/
     gs.js                Ghostscript locator + compress / PDF-A
     office.js            LibreOffice locator + headless convert (unique profile per call)
     pandoc.js            Bundled pandoc sidecar: locate + run. ALWAYS --sandbox (offline)
+    ffmpeg.js            Bundled ffmpeg sidecar: locate + run (video/audio), progress, hwaccel
+    calibre.js           Calibre (ebook-convert) locator + run — OPTIONAL engine, not bundled
     engines.js           The optional external engines in one place (status + download URLs)
     pdfshrink.js         Ghostscript-free PDF compression (pdfjs render -> JPEG -> pdf-lib)
     bmp.js  ico.js       Hand-written BMP and ICO codecs (libvips supports neither)
@@ -117,6 +122,8 @@ src/
     document-convert.js  marked/turndown/mammoth/html-to-docx + Electron printToPDF
     office-convert.js    Word/Sheets/Slides families (array export) via office.js
     pandoc-convert.js    Documents & Ebooks: docx/odt/epub/tex/rst/org/adoc/html/md/ipynb via pandoc.js
+    media-convert.js     Video & Audio (category "Media" -> its own top tab) via ffmpeg.js
+    ebook-convert.js     Ebooks (MOBI/AZW3/FB2…) via calibre.js — requiresEngine "calibre"
     pdf-merge.js         Merge PDFs (collect)
     pdf-split.js         Split PDF: per-page / every-N / ranges (explode)
     pdf-pages.js         Rotate / Delete / Extract pages (three convert tools, one file)
@@ -168,6 +175,14 @@ async convert({ inputPath, outputPath, outputFormat, options, signal, onProgress
   md, html, docx, odt, epub, latex (.tex), rst, org, asciidoc (.adoc) and ipynb.
   Bundled (no install), fully offline via `--sandbox`. **No PDF** — pandoc→PDF
   needs a multi-GB LaTeX install and the app already makes PDFs.
+- **Video & Audio** (`media-convert.js`, bundled ffmpeg, "Media" tab): mp4, mkv,
+  mov, webm, avi, gif ↔ and the audio set mp3/wav/flac/aac/m4a/ogg/opus. Extract
+  a soundtrack (video→audio) and video→GIF fall out of the matrix. Bundled,
+  offline. A single **Quality** knob (High/Balanced/Small) maps to CRF for video
+  and bitrate for lossy audio. Uses the app's hardware-accel setting for decode.
+- **Ebooks** (`ebook-convert.js`, **optional** Calibre): epub/mobi/azw3/azw/fb2/
+  cbz/… → epub/mobi/azw3/fb2/pdf/docx/txt. `requiresEngine:"calibre"`; installed
+  via winget or detected. EPUB alone is covered offline by Documents & Ebooks.
 - **PDF toolkit** (offline, auto-discovered tools):
   - Merge PDFs (collect), Images → PDF (collect, sharp + pdf-lib)
   - Split PDF (explode): per-page / every-N / custom ranges
@@ -224,6 +239,28 @@ To retheme, edit those token blocks only — all accent colour is confined to th
   `pandoc-convert` declares **no** `requiresEngine` — no badge, no install prompt.
   Bumping the pinned version means updating both the URL and the SHA in
   `build.yml`.
+- **Two bundled sidecars now live in resources/bin: pandoc.exe AND ffmpeg.exe.**
+  Both are pinned + checksum-verified and fetched by CI (`build.yml`) before
+  tests+build, shipped via `extraResources` (`to: bin`), never committed
+  (`resources/bin/.gitignore`). `ffmpeg.js` resolves it like `pandoc.js`
+  (packaged `process.resourcesPath/bin`, else project `resources/bin`, else PATH).
+  Because they're bundled, `media-convert`/`pandoc-convert` declare **no**
+  `requiresEngine`. Bumping either pinned version = update its URL **and** SHA in
+  `build.yml`. (gyan.dev ships ffmpeg as an `essentials` build with libx264/x265/
+  vp9/mp3/opus/vorbis — enough for the curated matrix; only `ffmpeg.exe` is kept.)
+- **ffmpeg hardware acceleration is decode-only, with a software retry.**
+  `-hwaccel auto` accelerates *decoding* and auto-falls-back; the software
+  *encoders* (libx264/VP9) are always used because hardware encoders
+  (nvenc/qsv/amf) are the fragile, GPU/driver-specific part. `convertWithFfmpeg`
+  also retries the whole run in pure software if an hwaccel run fails. It reads
+  the app's `hardwareAcceleration` setting (`off` → software). ffmpeg is offline
+  because we only ever pass it local paths — no URL inputs, no `-i http…`.
+- **Calibre is the one engine that is optional, not bundled** — it's a 400 MB
+  multi-file app, so it joins LibreOffice/Ghostscript in `engines.js`
+  (winget `calibre.calibre`). Its Settings row is painted from the shared
+  `engineStatus` (`refreshCalibre` reads the `ENGINES` array) rather than a
+  dedicated locate IPC. `ebook-convert` declares `requiresEngine:"calibre"`, so
+  the badge/install/Settings-link machinery covers it for free.
 - **A tool that shells out must declare `requiresEngine`** ("libreoffice" /
   "ghostscript"). `engines.js` owns the list; `registry.describe()` drops unknown
   ids. That declaration is the *only* thing driving the startup banner, the
@@ -383,9 +420,10 @@ Bigger engines (sidecar pattern in `_template.js` / `office.js`):
   — `pandoc-convert.js` + `pandoc.js`, bundled, `--sandbox` offline. It does *not*
   replace `mammoth`/`html-to-docx` in Document Converter (kept separate, per the
   "new tool" decision); a future pass could route docx writing through it.
-- `calibre` → ebooks (epub/mobi/azw3/fb2).
-- Video/audio via bundled `ffmpeg` (wire the existing hardware-acceleration setting
-  to `-hwaccel`).
+- ~~`calibre` → ebooks (epub/mobi/azw3/fb2)~~ **DONE (v2.1.0)** — `ebook-convert.js`,
+  optional engine (`engines.js` calibre entry).
+- ~~Video/audio via bundled `ffmpeg`, hardware-accel setting → `-hwaccel`~~
+  **DONE (v2.1.0)** — `media-convert.js` + `ffmpeg.js`, own "Video & Audio" tab.
 
 Smaller:
 - **encrypt/decrypt** (needs a crypto-capable lib; pdf-lib writes but doesn't

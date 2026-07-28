@@ -2,6 +2,28 @@
 
 All notable changes to Jdot Utilities. Dates are YYYY-MM-DD.
 
+## 2.1.0 — 2026-07-27
+
+### New: a Video & Audio tab
+- A new top-of-window tab (next to PDF Tools) converts **video and audio**:
+  MP4, MKV, MOV, WebM, AVI and animated **GIF**, plus MP3, WAV, FLAC, AAC, M4A,
+  OGG and Opus. **Pull the soundtrack out of a video**, or **turn a clip into a
+  GIF** — those just work by picking the output you want.
+- Powered by a **bundled ffmpeg**, so it works offline out of the box, with a
+  single **Quality** choice (High / Balanced / Small) and a live progress bar.
+- It uses your **hardware-acceleration** setting to speed up decoding when your
+  machine supports it, falling back to software automatically.
+
+### New: Ebooks (Kindle and more)
+- Convert ebooks — **EPUB, Kindle (MOBI/AZW3), FB2, comic archives (CBZ/CBR)**
+  and more — to EPUB, MOBI, AZW3, FB2, PDF, DOCX or text.
+- This one uses **Calibre**, a free app you install once (one click via Windows
+  Package Manager, or the download page). The tool shows "needs Calibre" with an
+  Install button until it's set up — the same as the other optional engines.
+  (Plain EPUB is already handled with nothing to install by Documents & Ebooks.)
+
+The installer grows a little to carry the bundled video engine.
+
 ## 2.0.0 — 2026-07-27
 
 ### New: Documents & Ebooks — a whole new converter

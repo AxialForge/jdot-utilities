@@ -48,6 +48,24 @@ jobs:
           Copy-Item $exe.FullName resources/bin/pandoc.exe -Force
           & resources/bin/pandoc.exe --version | Select-Object -First 1
 
+      # Fetch the bundled ffmpeg (Video & Audio tool) into resources/bin. Same
+      # pattern as pandoc: pinned + checksum-verified, before tests and build.
+      # Only ffmpeg.exe is kept (ffprobe/ffplay aren't needed).
+      - name: Fetch bundled ffmpeg
+        shell: pwsh
+        run: |
+          $ver = "8.1.2"
+          $sha = "db580001caa24ac104c8cb856cd113a87b0a443f7bdf47d8c12b1d740584a2ec"
+          $url = "https://github.com/GyanD/codexffmpeg/releases/download/$ver/ffmpeg-$ver-essentials_build.zip"
+          New-Item -ItemType Directory -Force resources/bin | Out-Null
+          Invoke-WebRequest $url -OutFile ffmpeg.zip
+          $got = (Get-FileHash ffmpeg.zip -Algorithm SHA256).Hash.ToLower()
+          if ($got -ne $sha) { Write-Error "ffmpeg checksum mismatch: got $got expected $sha"; exit 1 }
+          Expand-Archive ffmpeg.zip -DestinationPath ffmpeg_x -Force
+          $exe = Get-ChildItem ffmpeg_x -Recurse -Filter ffmpeg.exe | Select-Object -First 1
+          Copy-Item $exe.FullName resources/bin/ffmpeg.exe -Force
+          & resources/bin/ffmpeg.exe -version | Select-Object -First 1
+
       # Quality gate. The Node suite runs the data/OCR/PDF/pandoc engines;
       # Ghostscript isn't on the runner, so those tests skip themselves.
       - name: Run tests

@@ -14,6 +14,7 @@ const path = require("node:path");
 const { execFile } = require("node:child_process");
 const { locateSoffice } = require("./office");
 const { locateGs } = require("./gs");
+const { locateCalibre } = require("./calibre");
 
 const ENGINES = {
   libreoffice: {
@@ -52,6 +53,23 @@ const ENGINES = {
     downloadHint:
       "Ghostscript's page lists two licences and several files. For a normal Windows PC choose the AGPL Release column (it's free) and the row “Ghostscript for Windows (64 bit)” — the installer is named like gs10051w64.exe. Run it, then come back; the app will detect it.",
     locate: (s) => locateGs(s.ghostscriptPath),
+  },
+  calibre: {
+    id: "calibre",
+    name: "Calibre",
+    needed: "Ebook conversion (MOBI, AZW3, FB2, and other ebook formats)",
+    // pandoc's Documents & Ebooks tool already handles EPUB with nothing to
+    // install, so Calibre is only needed for the Kindle/other ebook formats.
+    alternative: "The Documents & Ebooks tool handles EPUB without it.",
+    url: "https://calibre-ebook.com/download_windows",
+    settingKey: "calibrePath",
+    // Calibre is a large multi-file app, not a single binary — so it's an
+    // optional install (winget), never bundled.
+    winget: "calibre.calibre",
+    sizeHint: "about 400 MB",
+    downloadHint:
+      "On the Calibre page choose the 64-bit Windows installer and run it. The default install (C:\\Program Files\\Calibre2) is detected automatically.",
+    locate: (s) => locateCalibre(s.calibrePath),
   },
 };
 

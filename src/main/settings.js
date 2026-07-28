@@ -13,6 +13,7 @@ const DEFAULTS = {
   recurseFolders: false, // "Add folder" pulls files from nested subfolders too
   libreOfficePath: null, // override path to soffice; null = auto-detect
   ghostscriptPath: null, // override path to gs; null = auto-detect (Compress / PDF-A)
+  calibrePath: null, // override path to ebook-convert; null = auto-detect (Ebooks)
   hideEngineNotice: false, // dismissed the "optional engine missing" banner
   askWhereToSave: true, // no default output folder -> ask on every run
   showUpdater: true, // show the manual update checker in Settings (never auto-checks either way)

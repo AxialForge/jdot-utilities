@@ -266,6 +266,7 @@
       <div class="tabs">
         <button class="tab active" data-tab="convert">Convert</button>
         <button class="tab" data-tab="pdf">PDF Tools</button>
+        <button class="tab" data-tab="media">Video &amp; Audio</button>
         <button class="tab" data-tab="catalog">All Tools</button>
         <button class="tab" data-tab="settings">Settings</button>
       </div>
@@ -472,6 +473,15 @@
                 <button class="btn small" id="resetGs">Auto</button>
               </div>
             </div>
+            <div class="set-row" id="engRow-calibre">
+              <div class="info"><div class="t"><span class="dot" id="caDot"></span>Calibre</div><div class="h" id="caStatus">Checking…</div><div class="h muted">Needed for the Ebooks tool (MOBI / AZW3 / FB2). The Documents &amp; Ebooks tool handles EPUB without it.</div><div class="opt-help" id="caHint" hidden></div></div>
+              <div style="display:flex; gap:8px;">
+                <button class="btn small" id="caInstall" hidden>Install</button>
+                <button class="btn small" id="caGet">Download page</button>
+                <button class="btn small" id="chooseCa">Choose…</button>
+                <button class="btn small" id="resetCa">Auto</button>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -604,9 +614,25 @@
           inputFormats:["xlsx","xls","ods","csv"], outputFormats:["pdf","xlsx","ods","csv"], options:[] },
         { id:"office-slides", name:"Presentations", category:"Office", requiresEngine:"libreoffice", description:"Convert presentations and to PDF. Requires LibreOffice.",
           inputFormats:["pptx","ppt","odp"], outputFormats:["pdf","pptx","odp"], options:[] },
+        { id:"pandoc-convert", name:"Documents & Ebooks", category:"Document",
+          description:"Convert between Word, ODT, EPUB, LaTeX (.tex), reStructuredText, Org, AsciiDoc, Markdown, HTML and Jupyter notebooks. Bundled and fully offline.",
+          inputFormats:["md","markdown","html","htm","docx","odt","epub","rst","org","tex","ipynb"],
+          outputFormats:["docx","odt","epub","tex","rst","org","adoc","html","md"],
+          excludePairs:{ md:["md"], markdown:["md"], html:["html"], htm:["html"], docx:["docx"], odt:["odt"], epub:["epub"], rst:["rst"], org:["org"], tex:["tex"], latex:["tex"] }, options:[] },
+        { id:"media-convert", name:"Video & Audio", category:"Media",
+          description:"Convert video and audio — MP4, MKV, MOV, WebM, AVI, GIF, plus MP3, WAV, FLAC, AAC, M4A, OGG, Opus. Extract a soundtrack, or make a GIF. Bundled and offline.",
+          inputFormats:["mp4","mkv","mov","webm","avi","gif","m4v","mpg","mpeg","wmv","flv","mp3","wav","flac","aac","m4a","ogg","opus","wma"],
+          outputFormats:["mp4","mkv","mov","webm","avi","gif","mp3","wav","flac","aac","m4a","ogg","opus"],
+          excludePairs:{ mp3:["mp4","mkv","mov","webm","avi","gif","mp3"], wav:["mp4","mkv","mov","webm","avi","gif","wav"], flac:["mp4","mkv","mov","webm","avi","gif","flac"], aac:["mp4","mkv","mov","webm","avi","gif","aac"], m4a:["mp4","mkv","mov","webm","avi","gif","m4a"], ogg:["mp4","mkv","mov","webm","avi","gif","ogg"], opus:["mp4","mkv","mov","webm","avi","gif","opus"], wma:["mp4","mkv","mov","webm","avi","gif"], gif:["mp3","wav","flac","aac","m4a","ogg","opus","gif"], mp4:["mp4"], mkv:["mkv"], mov:["mov"], webm:["webm"], avi:["avi"] },
+          options:[{key:"quality",label:"Quality",type:"select",choices:["High","Balanced","Small"],default:"Balanced"}] },
+        { id:"ebook-convert", name:"Ebooks", category:"Document", requiresEngine:"calibre",
+          description:"Convert ebooks — EPUB, Kindle (MOBI/AZW3), FB2, comic archives and more. Uses Calibre.",
+          inputFormats:["epub","mobi","azw3","azw","fb2","cbz","cbr","txt","rtf","docx","htmlz","lit","pdb"],
+          outputFormats:["epub","mobi","azw3","fb2","txt","rtf","docx","pdf","htmlz"],
+          excludePairs:{ epub:["epub"], mobi:["mobi"], azw3:["azw3"], fb2:["fb2"], txt:["txt"], rtf:["rtf"], docx:["docx"], htmlz:["htmlz"] }, options:[] },
       ];
 
-      let SETTINGS = { theme:"grey", defaultOutputDir:null, pdfPageSize:"Letter", concurrency:4, hardwareAcceleration:"auto", recurseFolders:false, libreOfficePath:null, ghostscriptPath:null, hideEngineNotice:false, askWhereToSave:true, showUpdater:true };
+      let SETTINGS = { theme:"grey", defaultOutputDir:null, pdfPageSize:"Letter", concurrency:4, hardwareAcceleration:"auto", recurseFolders:false, libreOfficePath:null, ghostscriptPath:null, calibrePath:null, hideEngineNotice:false, askWhereToSave:true, showUpdater:true };
       const applyTheme = (t) => document.documentElement.setAttribute("data-theme", t);
       async function saveSettings(patch){ SETTINGS = { ...SETTINGS, ...patch }; if (hasApi) SETTINGS = await api.setSettings(patch); }
 
@@ -614,7 +640,16 @@
       // which tools the rail shows. Section membership is data-driven: PDF-category
       // tools live under PDF Tools, everything else under Convert.
       const C = { tools:[], active:null, jobs:[], done:0, section:"convert" };
-      const sectionOf = (t)=> (t.category||"").toLowerCase()==="pdf" ? "pdf" : "convert";
+      // Section membership is data-driven by category: PDF tools under PDF Tools,
+      // media (video/audio) under Video & Audio, everything else under Convert.
+      const SECTION_TITLE = { convert:"Convert", pdf:"PDF Tools", media:"Video & Audio" };
+      const UTIL_SECTIONS = new Set(["convert","pdf","media"]);
+      function sectionOf(t){
+        const c = (t.category||"").toLowerCase();
+        if(c==="pdf") return "pdf";
+        if(c==="media") return "media";
+        return "convert";
+      }
       const toolsIn = (section)=> C.tools.filter((t)=> sectionOf(t)===section);
 
       function showView(view){
@@ -628,15 +663,17 @@
         if(name==="settings"){ showView("settings"); markTab("settings"); return; }
         if(name==="catalog"){ showView("catalog"); markTab("catalog"); renderCatalog(); return; }
 
-        // A utility section (convert | pdf): show the shared stage, retarget the rail.
+        // A utility section (convert | pdf | media): show the shared stage,
+        // retarget the rail.
         C.section = name;
         showView("stage"); markTab(name);
-        $("railHead").textContent = name==="pdf" ? "PDF Tools" : "Convert";
+        $("railHead").textContent = SECTION_TITLE[name] || "Convert";
         renderRail();
-        // Convert opens on Home (auto-detect drop). PDF has no home — pick a tool.
+        // Convert opens on Home (auto-detect drop). PDF and Media have no home —
+        // pick their first tool.
         if(name==="convert" && (!C.active || sectionOf(C.active)!=="convert")){ enterHome(); }
-        else if(name==="pdf" && (!C.active || sectionOf(C.active)!=="pdf")){
-          const first = toolsIn("pdf")[0];
+        else if(name!=="convert" && (!C.active || sectionOf(C.active)!==name)){
+          const first = toolsIn(name)[0];
           if(first) selectTool(first.id); else clearStage();
         } else {
           // Current tool still belongs here — re-assert the correct panel.
@@ -688,7 +725,7 @@
         const t = C.tools.find((x)=>x.id===id); if(!t) return;
         const sec = sectionOf(t);
         C.section = sec; showView("stage"); markTab(sec);
-        $("railHead").textContent = sec==="pdf" ? "PDF Tools" : "Convert";
+        $("railHead").textContent = SECTION_TITLE[sec] || "Convert";
         renderRail();
         selectTool(id);                 // exits home, shows the tool workspace
         if(paths && paths.length) addPaths(paths);
@@ -1466,11 +1503,29 @@
         const hint=$("gsHint");
         if(hint){ const gs=engineById("ghostscript"); hint.textContent = (!p && gs && gs.downloadHint) || ""; hint.hidden = Boolean(p) || !hint.textContent; }
       }
+      // Calibre is an optional engine like the others; its status row is painted
+      // from the shared engineStatus (ENGINES), which refreshEngines() fetches —
+      // so no dedicated locate IPC is needed.
+      function refreshCalibre(){
+        const el=$("caStatus"); if(!el) return;
+        if(!hasApi){ el.textContent="Detected automatically in the installed app."; return; }
+        const ca=engineById("calibre");
+        const p = ca && ca.found ? ca.path : null;
+        el.textContent = p ? ("Found: "+p) : "Not found — install Calibre, or choose ebook-convert.";
+        const d=$("caDot"); if(d) d.className = "dot "+(p?"on":"off");
+        const b=$("caInstall"); if(b) b.hidden = Boolean(p) || !(ca && ca.winget && CAN_INSTALL);
+        const hint=$("caHint");
+        if(hint){ hint.textContent = (!p && ca && ca.downloadHint) || ""; hint.hidden = Boolean(p) || !hint.textContent; }
+      }
       $("loGet").onclick=()=> hasApi && api.openEngineDownload("libreoffice");
       $("gsGet").onclick=()=> hasApi && api.openEngineDownload("ghostscript");
+      $("caGet").onclick=()=> hasApi && api.openEngineDownload("calibre");
       $("loInstall").onclick=()=> installEngine("libreoffice", $("loStatus"));
+      $("caInstall").onclick=()=> installEngine("calibre", $("caStatus"));
       $("chooseGs").onclick=async()=>{ if(!hasApi){ setStatus("Runs in the installed app."); return; } const p=await api.pickOneFile(); if(p){ await saveSettings({ghostscriptPath:p}); refreshGs(); refreshEngines(); } };
       $("resetGs").onclick=async()=>{ await saveSettings({ghostscriptPath:null}); refreshGs(); refreshEngines(); };
+      $("chooseCa").onclick=async()=>{ if(!hasApi){ setStatus("Runs in the installed app."); return; } const p=await api.pickOneFile(); if(p){ await saveSettings({calibrePath:p}); refreshEngines(); } };
+      $("resetCa").onclick=async()=>{ await saveSettings({calibrePath:null}); refreshEngines(); };
 
       // ── Optional engines ───────────────────────────────────────
       // Two tools shell out to something external (Office -> LibreOffice,
@@ -1493,7 +1548,7 @@
         if(!hasApi){ ENGINES=[]; return; }
         try { ENGINES = await api.engineStatus(); } catch { ENGINES = []; }
         try { CAN_INSTALL = await api.canInstallEngine(); } catch { CAN_INSTALL = false; }
-        paintEngineNotice(); paintEngineWarn();
+        paintEngineNotice(); paintEngineWarn(); refreshCalibre();
         // Repaint the tool lists so the per-tool availability badges reflect the
         // latest status (e.g. an engine that was just installed loses its badge).
         renderRail(); renderCatalog();
