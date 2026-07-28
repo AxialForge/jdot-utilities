@@ -33,6 +33,7 @@ converter doesn't touch the UI.
 - **Real PDF toolkit** — merge, split, rotate, delete/extract pages, images↔PDF, PDF→images, PDF→text, **OCR**, watermark, and **two ways to compress**.
 - **Shrink a PDF with nothing installed** — the built-in shrinker needs no Ghostscript; ideal for scans and phone-photo PDFs.
 - **Document conversion** — Markdown, HTML, Word (`.docx`), plain text, PDF — any-to-any.
+- **Documents & Ebooks** — Word, ODT, EPUB, LaTeX (`.tex`), reStructuredText, Org, AsciiDoc, Markdown, HTML and Jupyter notebooks, powered by a **bundled pandoc** (no install) that runs sandboxed and fully offline.
 - **Image conversion** — PNG, JPG, WebP, AVIF, TIFF, GIF, BMP, **Windows ICO**, plus HEIC/HEIF (iPhone photos), with resize presets and quality.
 - **Tells you what's missing** — if an optional engine isn't installed, the app says so on launch and on the tool, instead of failing after you press Convert. LibreOffice can be installed in one click via Windows Package Manager.
 - **Verifiably offline** — the PDF renderer runs in a session that refuses every non-local address, and a test asserts remote requests are blocked while local images still load.
