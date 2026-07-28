@@ -95,7 +95,7 @@ test("the tools that shell out declare the engine they need", () => {
 test("self-contained tools declare no engine", () => {
   const tools = loadTools();
   // pdf-shrink is the whole point: compression with nothing installed.
-  for (const id of ["pdf-shrink", "image-convert", "pdf-merge", "ocr-text", "data-convert", "pandoc-convert", "media-convert"]) {
+  for (const id of ["pdf-shrink", "image-convert", "pdf-merge", "ocr-text", "data-convert", "pandoc-convert", "video-convert", "audio-convert"]) {
     const t = tools.get(id);
     assert.ok(t, `${id} not discovered`);
     assert.strictEqual(describe(t).requiresEngine, null, `${id} must not need an engine`);

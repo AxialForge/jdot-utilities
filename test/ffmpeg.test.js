@@ -55,18 +55,32 @@ test("builds sensible args per target", () => {
 });
 
 // ── the discovered tool (always) ───────────────────────────────
-test("the Video & Audio tool is discovered under the Media category", () => {
-  const t = loadTools().get("media-convert");
-  assert.ok(t, "media-convert not discovered");
-  const d = describe(t);
-  assert.strictEqual(d.category, "Media");
-  assert.strictEqual(d.requiresEngine, null, "ffmpeg is bundled");
-  // audio -> video is impossible and must be hidden; gif -> audio too.
-  assert.ok(d.excludePairs.mp3.includes("mp4"), "mp3 -> mp4 must be excluded");
-  assert.ok(d.excludePairs.gif.includes("mp3"), "gif -> mp3 must be excluded");
-  assert.ok(d.excludePairs.mp4.includes("mp4"), "mp4 -> mp4 identity hidden");
-  // but a real conversion pair is allowed
-  assert.ok(!(d.excludePairs.mp4 || []).includes("webm"), "mp4 -> webm allowed");
+test("the Video and Audio tools are discovered under the Media category", () => {
+  const tools = loadTools();
+  const v = tools.get("video-convert");
+  const a = tools.get("audio-convert");
+  assert.ok(v && a, "video-convert / audio-convert not discovered");
+  const dv = describe(v);
+  const da = describe(a);
+  assert.strictEqual(dv.category, "Media");
+  assert.strictEqual(da.category, "Media");
+  assert.strictEqual(dv.requiresEngine, null, "ffmpeg is bundled");
+  assert.strictEqual(da.requiresEngine, null, "ffmpeg is bundled");
+
+  // Video makes visual output only; Audio makes sound output only.
+  assert.ok(dv.outputFormats.includes("mp4") && dv.outputFormats.includes("gif"));
+  assert.ok(!dv.outputFormats.some((f) => ["mp3", "wav", "aac"].includes(f)), "Video has no audio outputs");
+  assert.ok(da.outputFormats.includes("mp3"));
+  assert.ok(!da.outputFormats.some((f) => ["mp4", "gif"].includes(f)), "Audio has no video outputs");
+
+  // Audio accepts a video source (to extract its soundtrack) but not a GIF.
+  assert.ok(da.inputFormats.includes("mp4"), "video -> audio extraction allowed");
+  assert.ok(!da.inputFormats.includes("gif"), "a GIF has no soundtrack");
+
+  // Same-format no-ops are hidden; real cross conversions are not.
+  assert.deepStrictEqual(dv.excludePairs.mp4, ["mp4"]);
+  assert.deepStrictEqual(da.excludePairs.mp3, ["mp3"]);
+  assert.ok(!(dv.excludePairs.mp4 || []).includes("webm"), "mp4 -> webm allowed");
 });
 
 // ── real conversions (only with the binary) ────────────────────
@@ -99,8 +113,9 @@ test("runs through the batch runner like any convert tool", real, async () => {
   const d = work();
   const a = await makeClip(path.join(d, "a.mp4"));
   const b = await makeClip(path.join(d, "b.mp4"));
+  // Audio tool: extract mp3 from both video clips through the batch runner.
   const results = await runBatch({
-    tool: tools.get("media-convert"),
+    tool: tools.get("audio-convert"),
     files: [a, b],
     outputFormat: "mp3",
     outputDir: d,

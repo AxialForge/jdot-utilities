@@ -122,7 +122,7 @@ src/
     document-convert.js  marked/turndown/mammoth/html-to-docx + Electron printToPDF
     office-convert.js    Word/Sheets/Slides families (array export) via office.js
     pandoc-convert.js    Documents & Ebooks: docx/odt/epub/tex/rst/org/adoc/html/md/ipynb via pandoc.js
-    media-convert.js     Video & Audio (category "Media" -> its own top tab) via ffmpeg.js
+    media-convert.js     Exports TWO Media tools — "Video" and "Audio" side tabs — via ffmpeg.js
     ebook-convert.js     Ebooks (MOBI/AZW3/FB2…) via calibre.js — requiresEngine "calibre"
     pdf-merge.js         Merge PDFs (collect)
     pdf-split.js         Split PDF: per-page / every-N / ranges (explode)
@@ -175,11 +175,14 @@ async convert({ inputPath, outputPath, outputFormat, options, signal, onProgress
   md, html, docx, odt, epub, latex (.tex), rst, org, asciidoc (.adoc) and ipynb.
   Bundled (no install), fully offline via `--sandbox`. **No PDF** — pandoc→PDF
   needs a multi-GB LaTeX install and the app already makes PDFs.
-- **Video & Audio** (`media-convert.js`, bundled ffmpeg, "Media" tab): mp4, mkv,
-  mov, webm, avi, gif ↔ and the audio set mp3/wav/flac/aac/m4a/ogg/opus. Extract
-  a soundtrack (video→audio) and video→GIF fall out of the matrix. Bundled,
-  offline. A single **Quality** knob (High/Balanced/Small) maps to CRF for video
-  and bitrate for lossy audio. Uses the app's hardware-accel setting for decode.
+- **Video & Audio** (`media-convert.js`, bundled ffmpeg, "Media" tab): exports
+  **two** tools that appear as side tabs — **Video** (video/gif output) and
+  **Audio** (sound output; also accepts a video source, so it's where "extract
+  the soundtrack" lives). Split by *output* so visual and audio are separate; a
+  GIF isn't an Audio input (no soundtrack). Both share one `convert()`. mp4/mkv/
+  mov/webm/avi/gif and mp3/wav/flac/aac/m4a/ogg/opus. Bundled, offline. A single
+  **Quality** knob (High/Balanced/Small) → CRF for video, bitrate for lossy
+  audio. Uses the app's hardware-accel setting for decode.
 - **Ebooks** (`ebook-convert.js`, **optional** Calibre): epub/mobi/azw3/azw/fb2/
   cbz/… → epub/mobi/azw3/fb2/pdf/docx/txt. `requiresEngine:"calibre"`; installed
   via winget or detected. EPUB alone is covered offline by Documents & Ebooks.

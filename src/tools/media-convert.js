@@ -1,89 +1,103 @@
-// Video & Audio — the ffmpeg-backed converter. Its category is "Media", which
-// puts it under the top-level "Video & Audio" tab (the same data-driven routing
-// that sends PDF-category tools to PDF Tools).
+// Video & Audio — the ffmpeg-backed converter(s). Category "Media" puts these
+// under the top-level "Video & Audio" tab (the same data-driven routing that
+// sends PDF-category tools to PDF Tools).
 //
-// One convert tool covers everything: video -> video, audio -> audio,
-// video -> audio (extract the soundtrack) and video -> GIF all fall out of the
-// input/output matrix. What doesn't make sense — turning audio into video, or
-// pulling audio out of a GIF — is hidden via excludePairs.
+// This file exports TWO descriptors — a "Video" side tab and an "Audio" side tab
+// — so the visual and the sound conversions are separated. The split is by
+// OUTPUT: Video produces visual output (video or animated GIF); Audio produces
+// sound output, which also makes it the natural home for "extract the audio from
+// a video" (a video in, an audio file out). The conversion itself is identical
+// (ffmpeg figures out audio vs video from the output extension), so both share
+// one convert().
 //
 // ffmpeg is bundled (resources/bin), so this needs no install and is offline; no
 // requiresEngine.
 
-const path = require("node:path");
 const { locateFfmpeg, convertWithFfmpeg } = require("../main/ffmpeg");
 
 const VIDEO_IN = ["mp4", "mkv", "mov", "webm", "avi", "gif", "m4v", "mpg", "mpeg", "wmv", "flv"];
 const AUDIO_IN = ["mp3", "wav", "flac", "aac", "m4a", "ogg", "opus", "wma"];
 const VIDEO_OUT = ["mp4", "mkv", "mov", "webm", "avi", "gif"];
 const AUDIO_OUT = ["mp3", "wav", "flac", "aac", "m4a", "ogg", "opus"];
+// A GIF carries no soundtrack, so it isn't a valid source for the Audio tool.
+const VIDEO_WITH_AUDIO = VIDEO_IN.filter((f) => f !== "gif");
 
-// Build the invalid-pair map: audio can't become video/GIF; a GIF has no audio
-// to extract; and same-format is a no-op.
-function buildExclude() {
+// Same-format no-ops to hide (only matters when a format is both an input and an
+// output of that tool).
+function identity(formats, inputs) {
   const ex = {};
-  const add = (k, vals) => { (ex[k] ||= []).push(...vals); };
-  for (const a of AUDIO_IN) add(a, VIDEO_OUT); // audio -> video/gif: impossible
-  add("gif", AUDIO_OUT); // gif -> audio: nothing to extract
-  for (const f of [...VIDEO_OUT, ...AUDIO_OUT]) add(f, [f]); // hide identity no-ops
-  // De-dupe.
-  for (const k of Object.keys(ex)) ex[k] = [...new Set(ex[k])];
+  for (const f of formats) if (inputs.includes(f)) ex[f] = [f];
   return ex;
 }
+
+const QUALITY = {
+  key: "quality",
+  label: "Quality",
+  type: "select",
+  choices: ["High", "Balanced", "Small"],
+  default: "Balanced",
+  choiceHelp: {
+    High: "Best quality, largest file. Video uses a low CRF; audio ~256 kbps.",
+    Balanced: "The usual choice — good quality at a sensible size. Audio ~192 kbps.",
+    Small: "Smallest file, some quality traded away. Audio ~128 kbps.",
+  },
+};
 
 // Whether to let ffmpeg use GPU decode, from the app's hardware-acceleration
 // setting. Best-effort: any failure (or running outside the app) means software.
 function hwFromSettings() {
   try {
-    const mode = require("../main/settings").readSync().hardwareAcceleration;
-    return mode !== "off"; // "auto"/"on" -> yes, "off" -> no
+    return require("../main/settings").readSync().hardwareAcceleration !== "off";
   } catch {
     return false;
   }
 }
 
-module.exports = {
-  id: "media-convert",
-  name: "Video & Audio",
-  category: "Media",
-  description:
-    "Convert video and audio — MP4, MKV, MOV, WebM, AVI, animated GIF, plus MP3, WAV, FLAC, AAC, M4A, OGG and Opus. Pull the audio out of a video, or turn a clip into a GIF. Bundled (ffmpeg) and fully offline.",
-  inputFormats: [...VIDEO_IN, ...AUDIO_IN],
-  outputFormats: [...VIDEO_OUT, ...AUDIO_OUT],
-  excludePairs: buildExclude(),
-  options: [
-    {
-      key: "quality",
-      label: "Quality",
-      type: "select",
-      choices: ["High", "Balanced", "Small"],
-      default: "Balanced",
-      choiceHelp: {
-        High: "Best quality, largest file. Video uses a low CRF; audio ~256 kbps.",
-        Balanced: "The usual choice — good quality at a sensible size. Audio ~192 kbps.",
-        Small: "Smallest file, some quality traded away. Audio ~128 kbps.",
-      },
-    },
-  ],
-  // No requiresEngine: ffmpeg is bundled.
+async function convert({ inputPath, outputPath, outputFormat, options, signal, onProgress }) {
+  const ffmpegPath = locateFfmpeg();
+  if (!ffmpegPath) {
+    throw new Error("The bundled media engine (ffmpeg) wasn't found. Reinstalling the app should restore it.");
+  }
+  onProgress?.(0);
+  await convertWithFfmpeg({
+    ffmpegPath,
+    inputPath,
+    outputPath,
+    to: outputFormat,
+    quality: options?.quality || "Balanced",
+    hwaccel: hwFromSettings(),
+    signal,
+    onProgress,
+  });
+  onProgress?.(1);
+  return undefined;
+}
 
-  async convert({ inputPath, outputPath, outputFormat, options, signal, onProgress }) {
-    const ffmpegPath = locateFfmpeg();
-    if (!ffmpegPath) {
-      throw new Error("The bundled media engine (ffmpeg) wasn't found. Reinstalling the app should restore it.");
-    }
-    onProgress?.(0);
-    await convertWithFfmpeg({
-      ffmpegPath,
-      inputPath,
-      outputPath,
-      to: outputFormat,
-      quality: options?.quality || "Balanced",
-      hwaccel: hwFromSettings(),
-      signal,
-      onProgress,
-    });
-    onProgress?.(1);
-    return undefined;
+module.exports = [
+  {
+    id: "video-convert",
+    name: "Video",
+    category: "Media",
+    description:
+      "Convert video — MP4, MKV, MOV, WebM, AVI — or turn a clip into an animated GIF. Bundled (ffmpeg) and fully offline. (To pull the sound out of a video, use the Audio tab.)",
+    inputFormats: VIDEO_IN,
+    outputFormats: VIDEO_OUT,
+    excludePairs: identity(VIDEO_OUT, VIDEO_IN),
+    options: [QUALITY],
+    convert,
   },
-};
+  {
+    id: "audio-convert",
+    name: "Audio",
+    category: "Media",
+    description:
+      "Convert audio — MP3, WAV, FLAC, AAC, M4A, OGG, Opus — or extract the soundtrack from a video. Bundled (ffmpeg) and fully offline.",
+    // Video sources are accepted here so you can extract their audio; a GIF has
+    // no soundtrack, so it's left out.
+    inputFormats: [...VIDEO_WITH_AUDIO, ...AUDIO_IN],
+    outputFormats: AUDIO_OUT,
+    excludePairs: identity(AUDIO_OUT, AUDIO_IN),
+    options: [QUALITY],
+    convert,
+  },
+];

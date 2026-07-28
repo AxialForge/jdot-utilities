@@ -2,6 +2,16 @@
 
 All notable changes to Jdot Utilities. Dates are YYYY-MM-DD.
 
+## 2.1.1 — 2026-07-27
+
+### Video and Audio are now separate side tabs
+- Inside the **Video & Audio** tab, video and audio are split into two side tabs:
+  - **Video** — convert between MP4, MKV, MOV, WebM, AVI, or make an animated GIF.
+  - **Audio** — convert between MP3, WAV, FLAC, AAC, M4A, OGG, Opus — and it's
+    also where you **extract the soundtrack from a video** (drop a video, choose
+    an audio format).
+- Nothing lost, just tidier: each side stays focused on what you're making.
+
 ## 2.1.0 — 2026-07-27
 
 ### New: a Video & Audio tab
